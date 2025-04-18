@@ -14,7 +14,10 @@ def main():
     )
     
     # Create requirements
-    contains_req = ContainsRequirement(value=["(A)", "(B)", "(C)"])
+    contains_req = ContainsRequirement(
+        value=["(A)", "(B)", "(C)"],
+        name="Contains ABC Options"
+    )
     written_req = WrittenRequirement(
         value=[
             "Think through your answer before providing one",
@@ -23,7 +26,8 @@ def main():
         positive_examples=[],
         negative_examples=[],
         model="GPT-4",
-        token_limit=1024
+        token_limit=1024,
+        name="Show Reasoning Process"
     )
     
     # Convert requirements to JSON
@@ -42,8 +46,17 @@ def main():
         max_tokens=1024
     )
     
-    print("Response:")
+    print("Final Response:")
     print(response["choices"][0]["message"]["content"])
+    
+    # Display revision history
+    if len(response["choices"]) > 1:
+        print("\nRevision History:")
+        for i, choice in enumerate(response["choices"][1:], 1):
+            print(f"\nRevision {i}:")
+            print(f"Failed Requirement: {choice.get('requirement_name', 'Unknown')}")
+            print(f"Revision Prompt: {choice.get('revision_prompt', {}).get('content', 'None')}")
+            print(f"Response: {choice.get('message', {}).get('content', 'None')[:100]}...")
 
 if __name__ == "__main__":
     main()

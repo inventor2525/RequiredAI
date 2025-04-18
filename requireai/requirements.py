@@ -16,6 +16,9 @@ class Requirement(ABC):
     # Class variable for web name
     __web_name__: ClassVar[str]
     
+    # Name for the requirement instance
+    name: str = ""
+    
     @abstractmethod
     def evaluate(self, messages: List[dict]) -> bool:
         """

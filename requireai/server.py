@@ -60,13 +60,35 @@ class RequiredAIServer:
             prospective_response = self._complete_with_model(model_config, chat, data)
             
             # Process requirements
+            revision_history = []
             if requirements:
-                prospective_response = self._process_requirements(
+                prospective_response, revision_history = self._process_requirements(
                     requirements, 
                     chat, 
                     prospective_response, 
                     model_config
                 )
+            
+            # Construct the choices array
+            choices = [
+                {
+                    "index": 0,
+                    "message": prospective_response,
+                    "finish_reason": "stop"
+                }
+            ]
+            
+            # Add revision history to choices in reverse order (newest to oldest, excluding the final one)
+            for i, revision in enumerate(revision_history[:-1][::-1], 1):
+                if revision["failed_requirement"] is not None:
+                    choices.append({
+                        "index": i,
+                        "message": revision["message"],
+                        "finish_reason": "failed_requirement",
+                        "requirement_name": revision["failed_requirement"]["name"],
+                        "requirement_type": revision["failed_requirement"]["type"],
+                        "revision_prompt": revision["revision_prompt"]
+                    })
             
             # Construct the final response
             response = {
@@ -74,13 +96,7 @@ class RequiredAIServer:
                 "object": "chat.completion",
                 "created": self._get_timestamp(),
                 "model": model_name,
-                "choices": [
-                    {
-                        "index": 0,
-                        "message": prospective_response,
-                        "finish_reason": "stop"
-                    }
-                ]
+                "choices": choices
             }
             
             return jsonify(response)
@@ -140,16 +156,27 @@ class RequiredAIServer:
             default_model_config: The default model configuration to use
             
         Returns:
-            The final response message after processing requirements
+            A tuple containing:
+            - The final response message that meets all requirements
+            - A list of revision attempts with their prompts and failed requirements
         """
         # Convert JSON requirements to requirement objects
         requirement_objects = [Requirements.from_json(req) for req in requirements]
         
-        # Keep trying until all requirements are met or max attempts reached
-        max_attempts = self.config.get("max_revision_attempts", 3)
-        for attempt in range(max_attempts):
+        # Track revision history
+        revision_history = []
+        
+        # Add the initial response to the history
+        revision_history.append({
+            "message": prospective_response,
+            "failed_requirement": None,
+            "revision_prompt": None
+        })
+        
+        while True:
             # Check if all requirements are met
             all_met = True
+            failed_req = None
             
             # Create a conversation with the prospective response
             conversation = chat + [prospective_response]
@@ -157,32 +184,46 @@ class RequiredAIServer:
             for req in requirement_objects:
                 if not req.evaluate(conversation):
                     all_met = False
-                    
-                    # Get the model to use for revision
-                    model_name = getattr(req, "model", None)
-                    model_config = self._get_model_config(model_name) if model_name else default_model_config
-                    
-                    # Create a revision prompt
-                    revision_prompt = {
-                        "role": "user",
-                        "content": self.revise_prompt_template.format(requirement_prompt=req.prompt)
-                    }
-                    
-                    # Get a new response
-                    revision_conversation = conversation + [revision_prompt]
-                    prospective_response = self._complete_with_model(
-                        model_config, 
-                        revision_conversation,
-                        {}  # No additional params for revision
-                    )
-                    
-                    # Start over with the new response
+                    failed_req = req
                     break
             
+            # If all requirements are met, we're done
             if all_met:
                 break
+                
+            # Get the model to use for revision
+            model_name = getattr(failed_req, "model", None)
+            model_config = self._get_model_config(model_name) if model_name else default_model_config
+            
+            # Create a revision prompt
+            revision_prompt = {
+                "role": "user",
+                "content": self.revise_prompt_template.format(requirement_prompt=failed_req.prompt)
+            }
+            
+            # Get a new response
+            revision_conversation = conversation + [revision_prompt]
+            new_response = self._complete_with_model(
+                model_config, 
+                revision_conversation,
+                {}  # No additional params for revision
+            )
+            
+            # Add this revision attempt to the history
+            revision_history.append({
+                "message": prospective_response,
+                "failed_requirement": {
+                    "type": failed_req.__class__.__web_name__,
+                    "name": failed_req.name or failed_req.__class__.__web_name__
+                },
+                "revision_prompt": revision_prompt
+            })
+            
+            # Update the prospective response for the next iteration
+            prospective_response = new_response
         
-        return prospective_response
+        # Return the final response and the revision history
+        return prospective_response, revision_history
     
     def _generate_id(self) -> str:
         """Generate a unique ID for the response."""

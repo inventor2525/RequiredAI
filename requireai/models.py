@@ -12,6 +12,7 @@ class ContainsRequirement(Requirement):
     """Requirement that checks if the AI response contains any of the specified values."""
     
     value: List[str]
+    name: str = ""
     
     def evaluate(self, messages: List[dict]) -> bool:
         """
@@ -57,6 +58,7 @@ class WrittenRequirement(Requirement):
     negative_examples: List[str] = field(default_factory=list)
     model: Optional[str] = None
     token_limit: int = 1024
+    name: str = ""
     
     def evaluate(self, messages: List[dict]) -> bool:
         """
