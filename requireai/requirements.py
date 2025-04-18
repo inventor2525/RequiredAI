@@ -13,6 +13,9 @@ _REQUIREMENT_REGISTRY: Dict[str, Type] = {}
 class Requirement(ABC):
     """Base abstract class for all requirements."""
     
+    # Class variable for model name
+    model_name: str = None
+    
     @abstractmethod
     def evaluate(self, messages: List[dict]) -> bool:
         """
@@ -67,15 +70,15 @@ class Requirements:
         Returns:
             dict: JSON-serializable representation of the requirement
         """
+        from dataclasses import asdict
+        
         requirement_type = getattr(requirement_instance.__class__, "__web_name__", None)
         if not requirement_type:
             raise ValueError(f"Requirement class {requirement_instance.__class__.__name__} is not registered")
         
-        # Create a dictionary with all instance attributes
-        result = {"type": requirement_type}
-        for key, value in requirement_instance.__dict__.items():
-            if not key.startswith("_"):  # Skip private attributes
-                result[key] = value
+        # Use dataclass asdict to get all fields
+        result = asdict(requirement_instance)
+        result["type"] = requirement_type
                 
         return result
     
@@ -90,6 +93,8 @@ class Requirements:
         Returns:
             An instance of the appropriate requirement class
         """
+        from dataclasses import fields
+        
         requirement_type = j.get("type")
         if not requirement_type:
             raise ValueError("Requirement JSON must include a 'type' field")
@@ -100,6 +105,9 @@ class Requirements:
         # Create an instance of the requirement class
         requirement_class = _REQUIREMENT_REGISTRY[requirement_type]
         
-        # Remove the type field and pass the rest as kwargs
-        kwargs = {k: v for k, v in j.items() if k != "type"}
+        # Get valid field names for this dataclass
+        valid_fields = {f.name for f in fields(requirement_class)}
+        
+        # Filter the input dict to only include valid fields
+        kwargs = {k: v for k, v in j.items() if k != "type" and k in valid_fields}
         return requirement_class(**kwargs)

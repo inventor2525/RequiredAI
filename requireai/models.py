@@ -2,7 +2,7 @@
 Requirement model implementations for RequiredAI.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List, Optional, Any
 from .requirements import requirement, Requirement
 
@@ -53,17 +53,10 @@ class WrittenRequirement(Requirement):
     """
     
     value: List[str]
-    positive_examples: Optional[List[str]] = None
-    negative_examples: Optional[List[str]] = None
+    positive_examples: List[str] = field(default_factory=list)
+    negative_examples: List[str] = field(default_factory=list)
     model: Optional[str] = None
     token_limit: int = 1024
-    
-    def __post_init__(self):
-        """Initialize optional fields with empty lists if None."""
-        if self.positive_examples is None:
-            self.positive_examples = []
-        if self.negative_examples is None:
-            self.negative_examples = []
     
     def evaluate(self, messages: List[dict]) -> bool:
         """
