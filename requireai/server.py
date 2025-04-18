@@ -145,42 +145,39 @@ class RequiredAIServer:
         # Convert JSON requirements to requirement objects
         requirement_objects = [Requirements.from_json(req) for req in requirements]
         
-        # Keep trying until all requirements are met or max attempts reached
-        max_attempts = self.config.get("max_revision_attempts", 3)
-        for attempt in range(max_attempts):
-            # Check if all requirements are met
-            all_met = True
-            
+        while True:  # Continue until all requirements are met (no stopping condition)
             # Create a conversation with the prospective response
             conversation = chat + [prospective_response]
             
+            # Check all requirements
+            failed_requirement = None
+            
             for req in requirement_objects:
                 if not req.evaluate(conversation):
-                    all_met = False
-                    
-                    # Get the model to use for revision
-                    model_name = getattr(req, "model", None)
-                    model_config = self._get_model_config(model_name) if model_name else default_model_config
-                    
-                    # Create a revision prompt
-                    revision_prompt = {
-                        "role": "user",
-                        "content": self.revise_prompt_template.format(requirement_prompt=req.prompt)
-                    }
-                    
-                    # Get a new response
-                    revision_conversation = conversation + [revision_prompt]
-                    prospective_response = self._complete_with_model(
-                        model_config, 
-                        revision_conversation,
-                        {}  # No additional params for revision
-                    )
-                    
-                    # Start over with the new response
+                    failed_requirement = req
                     break
             
-            if all_met:
+            # If all requirements are met, we're done
+            if failed_requirement is None:
                 break
+                
+            # Get the model to use for revision
+            model_name = getattr(failed_requirement, "model", None)
+            model_config = self._get_model_config(model_name) if model_name else default_model_config
+            
+            # Create a revision prompt
+            revision_prompt = {
+                "role": "user",
+                "content": self.revise_prompt_template.format(requirement_prompt=failed_requirement.prompt)
+            }
+            
+            # Get a new response
+            revision_conversation = conversation + [revision_prompt]
+            prospective_response = self._complete_with_model(
+                model_config, 
+                revision_conversation,
+                {}  # No additional params for revision
+            )
         
         return prospective_response
     

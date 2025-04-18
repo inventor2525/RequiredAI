@@ -11,6 +11,5 @@
       "base_url": "https://api.openai.com/v1"
     }
   },
-  "revise_prompt_template": "Your previous response did not meet the following requirement: {requirement_prompt}. Please revise your response to meet this requirement while maintaining the quality and relevance of your answer.",
-  "max_revision_attempts": 3
+  "revise_prompt_template": "Your previous response did not meet the following requirement: {requirement_prompt}. Please revise your response to meet this requirement while maintaining the quality and relevance of your answer."
 }

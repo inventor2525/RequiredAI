@@ -2,7 +2,7 @@
 Core requirements functionality for RequiredAI.
 """
 
-from typing import Any, Callable, Dict, List, Type, TypeVar
+from typing import Any, Callable, Dict, List, Type, TypeVar, ClassVar
 from abc import ABC, abstractmethod
 
 T = TypeVar("T")
@@ -13,8 +13,8 @@ _REQUIREMENT_REGISTRY: Dict[str, Type] = {}
 class Requirement(ABC):
     """Base abstract class for all requirements."""
     
-    # Class variable for model name
-    model_name: str = None
+    # Class variable for web name
+    __web_name__: ClassVar[str]
     
     @abstractmethod
     def evaluate(self, messages: List[dict]) -> bool:
@@ -50,7 +50,8 @@ def requirement(name: str) -> Callable[[T], T]:
         The decorated class
     """
     def decorator(cls: T) -> T:
-        setattr(cls, "__web_name__", name)
+        # Set the __web_name__ class variable
+        cls.__web_name__ = name
         _REQUIREMENT_REGISTRY[name] = cls
         return cls
     return decorator
