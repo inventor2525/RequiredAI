@@ -27,8 +27,9 @@ class RequiredAIServer:
             "Please revise your response to meet this requirement.")
         
         # Initialize the model manager singleton
-        from .model_manager import ModelManager
-        ModelManager.get_instance().__init__(self.config)
+        from .model_manager import ModelManager, model_manager
+        if model_manager is None:
+            ModelManager(self.config)
         
         self._setup_routes()
     
@@ -59,12 +60,11 @@ class RequiredAIServer:
             model_name = data.get("model")
             
             # Use ModelManager directly
-            from .model_manager import ModelManager
-            model_manager = ModelManager.get_instance()
+            from .model_manager import model_manager
             
             try:
                 # Verify the model exists
-                model_manager.get_model_config(model_name)
+                model_config = model_manager.get_model_config(model_name)
             except ValueError:
                 return jsonify({"error": f"Model {model_name} not configured"}), 400
             
@@ -191,8 +191,7 @@ class RequiredAIServer:
             }
             
             # Get a new response using ModelManager directly
-            from .model_manager import ModelManager
-            model_manager = ModelManager.get_instance()
+            from .model_manager import model_manager
             
             revision_conversation = conversation + [revision_prompt]
             new_response = model_manager.complete_with_model(

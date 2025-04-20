@@ -100,8 +100,7 @@ class WrittenRequirement(Requirement):
             
         try:
             # Use the ModelManager singleton directly
-            from requireai.model_manager import ModelManager
-            model_manager = ModelManager.get_instance()
+            from requireai.model_manager import model_manager
             
             # Prepare the evaluation prompt
             requirements_str = "; ".join(self.value)

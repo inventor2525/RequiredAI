@@ -8,38 +8,24 @@ from .providers import BaseModelProvider
 # Import providers to register them
 from .providers.anthropic import AnthropicProvider
 
+# Global singleton instance
+model_manager = None
+
 class ModelManager:
     """Manager for model providers."""
     
-    # Singleton instance
-    _instance = None
-    _initialized = False
-    
-    @classmethod
-    def get_instance(cls) -> 'ModelManager':
-        """Get the singleton instance of ModelManager."""
-        if cls._instance is None:
-            cls._instance = cls.__new__(cls)
-        return cls._instance
-    
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: Dict[str, Any]):
         """
         Initialize the model manager.
         
         Args:
             config: The server configuration
         """
-        # Only initialize once
-        if ModelManager._initialized and config is None:
-            return
-            
-        if config is None:
-            raise ValueError("Config must be provided for initial ModelManager initialization")
-            
+        global model_manager
         self.config = config
         self.models_config = config.get("models", {})
         self.provider_instances = {}
-        ModelManager._initialized = True
+        model_manager = self
     
     def get_model_config(self, model_name: str) -> Dict[str, Any]:
         """

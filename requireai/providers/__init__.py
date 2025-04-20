@@ -31,6 +31,11 @@ class BaseModelProvider:
     def __init__(self, config: Dict[str, Any]):
         """Initialize the provider with configuration."""
         self.config = config
+        
+        # Get provider name from class and register if not already registered
+        provider_name = self.__class__.__name__.replace("Provider", "").lower()
+        if provider_name not in self._PROVIDER_REGISTRY:
+            self._PROVIDER_REGISTRY[provider_name] = self.__class__
     
     def complete(self, messages: List[Dict[str, Any]], params: Dict[str, Any]) -> Dict[str, Any]:
         """
