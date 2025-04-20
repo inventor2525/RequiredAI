@@ -78,16 +78,44 @@ class WrittenRequirement(Requirement):
         Returns:
             bool: True if the requirement is met, False otherwise
         """
-        # In a real implementation, this would call the specified model
-        # to evaluate if the response meets the writing requirements
-        # For now, we'll return a placeholder implementation
+        if not messages:
+            return False
+            
+        last_message = messages[-1]
+        content = last_message.get("content", "")
         
-        # This is a simplified placeholder - in a real implementation,
-        # you would send the messages, requirements, and examples to the model
-        # and get back an evaluation
+        if not isinstance(content, str):
+            return False
         
-        # TODO: Implement actual evaluation logic using the specified model
-        return True  # Placeholder
+        # Simple evaluation logic - check if the content contains phrases that suggest reasoning
+        reasoning_indicators = [
+            "let me think", 
+            "step by step", 
+            "first,", 
+            "second,", 
+            "third,", 
+            "analyzing", 
+            "consider", 
+            "reasoning", 
+            "analysis"
+        ]
+        
+        # Check if any of the reasoning indicators are present
+        has_reasoning = any(indicator.lower() in content.lower() for indicator in reasoning_indicators)
+        
+        # Check if any of the required writing styles are mentioned
+        required_styles = [req.lower() for req in self.value]
+        follows_style = any(style in content.lower() for style in required_styles)
+        
+        # Print for debugging
+        print(f"\nEvaluating Written requirement:")
+        print(f"Response preview: {content[:100]}...")
+        print(f"Has reasoning indicators: {has_reasoning}")
+        print(f"Follows required style: {follows_style}")
+        print(f"Requirement satisfied: {has_reasoning}")
+        
+        # For now, just check for reasoning indicators
+        return has_reasoning
     
     @property
     def prompt(self) -> str:

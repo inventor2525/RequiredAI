@@ -198,20 +198,22 @@ class RequiredAIServer:
                 system_content = msg["content"]
                 break
         
-        # Prepare system message in the format Anthropic expects
-        system = None
-        if system_content:
-            system = system_content
-        
         # Make the API call
         try:
-            response = client.messages.create(
-                model=provider_model,
-                max_tokens=max_tokens,
-                temperature=temperature,
-                system=system,
-                messages=anthropic_messages
-            )
+            # Create the request parameters
+            request_params = {
+                "model": provider_model,
+                "max_tokens": max_tokens,
+                "temperature": temperature,
+                "messages": anthropic_messages
+            }
+            
+            # Only add system parameter if it exists
+            if system_content:
+                request_params["system"] = system_content
+            
+            # Make the API call
+            response = client.messages.create(**request_params)
             
             # Return the response in the expected format
             return {
@@ -220,7 +222,9 @@ class RequiredAIServer:
             }
         except Exception as e:
             print(f"Error calling Anthropic API: {str(e)}")
-            print(f"Request details: model={provider_model}, messages={anthropic_messages}")
+            print(f"Request details: model={provider_model}")
+            print(f"Messages: {anthropic_messages[:2]}...")  # Print just first few messages for privacy
+            print(f"System content exists: {system_content is not None}")
             raise
             
     def _complete_with_openai(
