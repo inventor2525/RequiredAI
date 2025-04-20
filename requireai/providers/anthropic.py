@@ -6,8 +6,9 @@ import os
 from typing import Dict, List, Any, Optional
 import anthropic
 
-from . import BaseModelProvider
+from . import BaseModelProvider, provider
 
+@provider('anthropic')
 class AnthropicProvider(BaseModelProvider):
     """Provider for Anthropic's Claude API."""
     

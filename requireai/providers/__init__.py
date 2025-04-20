@@ -2,8 +2,9 @@
 Provider system for RequiredAI.
 """
 
-from typing import Dict, Type, List, Any, Optional
+from typing import Dict, Type, List, Any, Optional, TypeVar, Callable
 
+T = TypeVar('T')
 class BaseModelProvider:
     """Base class for all model providers."""
     
@@ -22,15 +23,10 @@ class BaseModelProvider:
         """Create a provider instance by name."""
         provider_class = cls.get_provider(provider_name)
         return provider_class(config)
-    
+            
     def __init__(self, config: Dict[str, Any]):
         """Initialize the provider with configuration."""
         self.config = config
-        
-        # Get provider name from class and register if not already registered
-        provider_name = self.__class__.__name__.replace("Provider", "").lower()
-        if provider_name not in self._PROVIDER_REGISTRY:
-            self._PROVIDER_REGISTRY[provider_name] = self.__class__
     
     def complete(self, messages: List[Dict[str, Any]], params: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -58,3 +54,12 @@ class BaseModelProvider:
         """
         # Simple estimation based on character count
         return int(len(text) / 4.3)
+
+def provider(provider_name:str) -> Callable[[T],T]:
+    '''
+    Decorator to register a model provider class.
+    '''
+    def inner(c:T, name:str=provider_name) -> T:
+        BaseModelProvider._PROVIDER_REGISTRY[name] = c
+        return c
+    return inner
