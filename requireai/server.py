@@ -168,24 +168,15 @@ class RequiredAIServer:
                 "revision_prompt": revision_prompt
             })
                 
-            # Get the model to use for revision
-            model_name = getattr(failed_req, "model", None)
-            if not model_name:
-                # Find the model name from the default config
-                for name, config in self.config.get("models", {}).items():
-                    if config == default_model_config:
-                        model_name = name
-                        break
-            
-            if not model_name:
-                raise ValueError("No model specified for revision")
+            # Use the model from the requirement or fall back to the original model
+            model_name = getattr(failed_req, "model", None) or data.get("model")
             
             # Get a new response using ModelManager
             revision_conversation = conversation + [revision_prompt]
             new_response = model_manager.complete_with_model(
                 model_name,
                 revision_conversation,
-                {"max_tokens": 1024}  # Basic params for revision
+                {}  # No additional params needed
             )
             
             # Update the prospective response for the next iteration
