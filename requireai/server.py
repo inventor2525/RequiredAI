@@ -177,17 +177,31 @@ class RequiredAIServer:
             if msg["role"] == "system":
                 # Skip system messages as they'll be handled separately
                 continue
+                
+            # Map roles to Anthropic's expected format
+            role = msg["role"]
+            if role == "assistant":
+                anthropic_role = "assistant"
+            else:
+                anthropic_role = "user"
+                
+            # Format content as expected by Anthropic
             anthropic_messages.append({
-                "role": "assistant" if msg["role"] == "assistant" else "user",
+                "role": anthropic_role,
                 "content": msg["content"]
             })
         
         # Extract system message if present
-        system_message = None
+        system_content = None
         for msg in messages:
             if msg["role"] == "system":
-                system_message = msg["content"]
+                system_content = msg["content"]
                 break
+        
+        # Prepare system message in the format Anthropic expects
+        system = None
+        if system_content:
+            system = system_content
         
         # Make the API call
         try:
@@ -195,7 +209,7 @@ class RequiredAIServer:
                 model=provider_model,
                 max_tokens=max_tokens,
                 temperature=temperature,
-                system=system_message,
+                system=system,
                 messages=anthropic_messages
             )
             
@@ -206,6 +220,7 @@ class RequiredAIServer:
             }
         except Exception as e:
             print(f"Error calling Anthropic API: {str(e)}")
+            print(f"Request details: model={provider_model}, messages={anthropic_messages}")
             raise
             
     def _complete_with_openai(
