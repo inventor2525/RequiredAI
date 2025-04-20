@@ -38,6 +38,7 @@ class ContainsRequirement(Requirement):
         print(f"Evaluating Contains requirement on: {content[:50]}...")
         result = any(val in content for val in self.value)
         print(f"Contains requirement result: {result}")
+        print(f"Looking for any of these values: {self.value}")
             
         return result
     

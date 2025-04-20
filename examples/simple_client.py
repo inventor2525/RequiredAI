@@ -54,8 +54,11 @@ def main():
         for i, choice in enumerate(response["choices"][1:], 1):
             print(f"\nRevision {i}:")
             print(f"Failed Requirement: {choice.get('requirement_name', 'Unknown')}")
-            print(f"Revision Prompt: {choice.get('revision_prompt', {}).get('content', 'None')}")
-            print(f"Response: {choice.get('message', {}).get('content', 'None')[:100]}...")
+            if choice.get('revision_prompt'):
+                print(f"Revision Prompt: {choice.get('revision_prompt', {}).get('content', 'None')}")
+            if choice.get('message'):
+                print(f"Response: {choice.get('message', {}).get('content', 'None')[:100]}...")
+            print("-" * 50)
 
 if __name__ == "__main__":
     main()

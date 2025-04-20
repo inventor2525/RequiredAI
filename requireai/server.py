@@ -183,7 +183,14 @@ class RequiredAIServer:
             "revision_prompt": None
         })
         
-        while True:
+        # Limit iterations to prevent infinite loops during development
+        max_iterations = 5  # This is just for safety during development
+        iteration = 0
+        
+        while iteration < max_iterations:
+            iteration += 1
+            print(f"Requirement check iteration {iteration}")
+            
             # Check if all requirements are met
             all_met = True
             failed_req = None
@@ -199,7 +206,10 @@ class RequiredAIServer:
             
             # If all requirements are met, we're done
             if all_met:
+                print("All requirements met!")
                 break
+                
+            print(f"Failed requirement: {failed_req.__class__.__web_name__}")
                 
             # Get the model to use for revision
             model_name = getattr(failed_req, "model", None)
