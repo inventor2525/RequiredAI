@@ -183,13 +183,8 @@ class RequiredAIServer:
             "revision_prompt": None
         })
         
-        # Limit iterations to prevent infinite loops during development
-        max_iterations = 5  # This is just for safety during development
-        iteration = 0
-        
-        while iteration < max_iterations:
-            iteration += 1
-            print(f"Requirement check iteration {iteration}")
+        while True:  # No iteration limit - continue until all requirements are met
+            print("Checking requirements...")
             
             # Check if all requirements are met
             all_met = True
