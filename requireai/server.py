@@ -7,7 +7,7 @@ import json
 import os
 from flask import Flask, request, jsonify
 from .requirements import Requirements
-from .model_manager import ModelManager, model_manager
+from .model_manager import ModelManager
 
 class RequiredAIServer:
     """Server for handling RequiredAI requests."""
@@ -26,9 +26,7 @@ class RequiredAIServer:
             "Your previous response did not meet the following requirement: {requirement_prompt}. "
             "Please revise your response to meet this requirement.")
         
-        # Initialize the model manager singleton
-        if model_manager is None:
-            ModelManager(self.config)
+        ModelManager(self.config)
         
         self._setup_routes()
     
@@ -60,13 +58,13 @@ class RequiredAIServer:
             
             try:
                 # Verify the model exists
-                model_config = model_manager.get_model_config(model_name)
+                model_config = ModelManager.singleton().get_model_config(model_name)
             except ValueError:
                 return jsonify({"error": f"Model {model_name} not configured"}), 400
             
             # Send the initial request to the model
             chat = data.get("messages", [])
-            prospective_response = model_manager.complete_with_model(model_name, chat, data)
+            prospective_response = ModelManager.singleton().complete_with_model(model_name, chat, data)
             
             # Process requirements
             choices = []
@@ -173,7 +171,7 @@ class RequiredAIServer:
             
             # Get a new response using ModelManager
             revision_conversation = conversation + [revision_prompt]
-            new_response = model_manager.complete_with_model(
+            new_response = ModelManager.singleton().complete_with_model(
                 model_name,
                 revision_conversation,
                 {}  # No additional params needed

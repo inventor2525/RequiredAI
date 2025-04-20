@@ -8,11 +8,15 @@ from .providers import BaseModelProvider
 # Import providers to register them
 from .providers.anthropic import AnthropicProvider
 
-# Global singleton instance
-model_manager = None
-
 class ModelManager:
     """Manager for model providers."""
+    
+    _instance = None
+    
+    @staticmethod
+    def singleton():
+        """Get the singleton instance of ModelManager."""
+        return ModelManager._instance
     
     def __init__(self, config: Dict[str, Any]):
         """
@@ -21,11 +25,10 @@ class ModelManager:
         Args:
             config: The server configuration
         """
-        global model_manager
         self.config = config
         self.models_config = config.get("models", {})
         self.provider_instances = {}
-        model_manager = self
+        ModelManager._instance = self
     
     def get_model_config(self, model_name: str) -> Dict[str, Any]:
         """

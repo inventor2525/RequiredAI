@@ -99,8 +99,8 @@ class WrittenRequirement(Requirement):
             raise ValueError("No model specified for WrittenRequirement evaluation")
             
         try:
-            # Import model_manager only where needed
-            from requireai.model_manager import model_manager
+            # Import ModelManager only where needed
+            from requireai.model_manager import ModelManager
             
             # Prepare the evaluation prompt
             requirements_str = "; ".join(self.value)
@@ -132,7 +132,7 @@ class WrittenRequirement(Requirement):
             # Estimate token count and limit examples if needed
             total_tokens = 0
             for msg in eval_messages:
-                total_tokens += model_manager.estimate_tokens(msg["content"], self.model)
+                total_tokens += ModelManager.singleton().estimate_tokens(msg["content"], self.model)
                 
             if total_tokens > self.token_limit:
                 print(f"Token limit exceeded ({total_tokens} > {self.token_limit}), truncating examples")
@@ -149,7 +149,7 @@ class WrittenRequirement(Requirement):
                 ]
             
             # Get the evaluation from the model
-            response = model_manager.complete_with_model(
+            response = ModelManager.singleton().complete_with_model(
                 self.model,
                 eval_messages,
                 {"max_tokens": 10, "temperature": 0.0}  # Use low temperature for consistent results
