@@ -167,7 +167,7 @@ class RequiredAIServer:
         client = anthropic.Anthropic(api_key=api_key)
         
         # Extract parameters
-        model_name = params.get("model", "claude-3-5-haiku-latest")
+        provider_model = model_config.get("provider_model", "claude-3-5-haiku-latest")
         max_tokens = params.get("max_tokens", 1024)
         temperature = params.get("temperature", 0.7)
         
@@ -192,7 +192,7 @@ class RequiredAIServer:
         # Make the API call
         try:
             response = client.messages.create(
-                model=model_name,
+                model=provider_model,
                 max_tokens=max_tokens,
                 temperature=temperature,
                 system=system_message,

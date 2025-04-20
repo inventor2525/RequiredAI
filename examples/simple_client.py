@@ -24,7 +24,7 @@ def main():
         ],
         positive_examples=[],
         negative_examples=[],
-        model="GPT-4",
+        model="sonnet",
         token_limit=1024,
         name="Show Reasoning Process"
     )
@@ -37,7 +37,7 @@ def main():
     
     # Create a completion
     response = client.create_completion(
-        model="claude-3-5-haiku-latest",
+        model="haiku",
         messages=[
             {"role": "user", "content": "Hello, Claude"}
         ],
