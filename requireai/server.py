@@ -6,8 +6,8 @@ from typing import List, Dict, Any, Optional
 import json
 import os
 from flask import Flask, request, jsonify
-import anthropic
 from .requirements import Requirements
+from .model_manager import ModelManager
 
 class RequiredAIServer:
     """Server for handling RequiredAI requests."""
@@ -20,10 +20,17 @@ class RequiredAIServer:
             config_path: Path to the server configuration file
         """
         self.app = Flask(__name__)
+        self.config_path = config_path
         self.config = self._load_config(config_path)
         self.revise_prompt_template = self.config.get("revise_prompt_template", 
             "Your previous response did not meet the following requirement: {requirement_prompt}. "
             "Please revise your response to meet this requirement.")
+        
+        # Set the config path in the environment for requirements to use
+        os.environ["REQUIREAI_CONFIG_PATH"] = config_path
+        
+        # Initialize the model manager
+        self.model_manager = ModelManager(self.config)
         
         self._setup_routes()
     
@@ -102,7 +109,7 @@ class RequiredAIServer:
             
             return jsonify(response)
     
-    def _get_model_config(self, model_name: str) -> Optional[Dict[str, Any]]:
+    def _get_model_config(self, model_name: str) -> Dict[str, Any]:
         """
         Get the configuration for a specific model.
         
@@ -110,10 +117,9 @@ class RequiredAIServer:
             model_name: The name of the model
             
         Returns:
-            The model configuration or None if not found
+            The model configuration
         """
-        models = self.config.get("models", {})
-        return models.get(model_name)
+        return self.model_manager.get_model_config(model_name)
     
     def _complete_with_model(
         self, 
@@ -132,127 +138,18 @@ class RequiredAIServer:
         Returns:
             The model's response message
         """
-        provider = model_config.get("provider", "").lower()
+        model_name = params.get("model")
+        if not model_name:
+            # Try to find a model name in the config
+            for name, config in self.config.get("models", {}).items():
+                if config == model_config:
+                    model_name = name
+                    break
         
-        if provider == "anthropic":
-            return self._complete_with_anthropic(model_config, messages, params)
-        elif provider == "openai":
-            return self._complete_with_openai(model_config, messages, params)
-        else:
-            raise ValueError(f"Unsupported provider: {provider}")
+        if not model_name:
+            raise ValueError("Model name not found in parameters or config")
             
-    def _complete_with_anthropic(
-        self,
-        model_config: Dict[str, Any],
-        messages: List[Dict[str, Any]],
-        params: Dict[str, Any]
-    ) -> Dict[str, Any]:
-        """
-        Send a completion request to Anthropic's Claude API.
-        
-        Args:
-            model_config: Configuration for the model
-            messages: The conversation messages
-            params: Additional parameters for the request
-            
-        Returns:
-            The model's response message
-        """
-        # Get API key from environment variable
-        api_key = os.environ.get(model_config.get("api_key_env", "ANTHROPIC_API_KEY"))
-        if not api_key:
-            raise ValueError(f"API key environment variable {model_config.get('api_key_env')} not set")
-        
-        # Initialize Anthropic client
-        client = anthropic.Anthropic(api_key=api_key)
-        
-        # Extract parameters
-        provider_model = model_config.get("provider_model", "claude-3-5-haiku-latest")
-        max_tokens = params.get("max_tokens", 1024)
-        temperature = params.get("temperature", 0.7)
-        
-        # Format messages for Anthropic API
-        anthropic_messages = []
-        for msg in messages:
-            if msg["role"] == "system":
-                # Skip system messages as they'll be handled separately
-                continue
-                
-            # Map roles to Anthropic's expected format
-            role = msg["role"]
-            if role == "assistant":
-                anthropic_role = "assistant"
-            else:
-                anthropic_role = "user"
-                
-            # Format content as expected by Anthropic
-            anthropic_messages.append({
-                "role": anthropic_role,
-                "content": msg["content"]
-            })
-        
-        # Extract system message if present
-        system_content = None
-        for msg in messages:
-            if msg["role"] == "system":
-                system_content = msg["content"]
-                break
-        
-        # Make the API call
-        try:
-            # Create the request parameters
-            request_params = {
-                "model": provider_model,
-                "max_tokens": max_tokens,
-                "temperature": temperature,
-                "messages": anthropic_messages
-            }
-            
-            # Only add system parameter if it exists
-            if system_content:
-                request_params["system"] = system_content
-            
-            print(f"Using Anthropic model: {provider_model}")
-            
-            # Make the API call
-            response = client.messages.create(**request_params)
-            
-            # Return the response in the expected format
-            return {
-                "role": "assistant",
-                "content": response.content[0].text
-            }
-        except Exception as e:
-            print(f"Error calling Anthropic API: {str(e)}")
-            print(f"Request details: model={provider_model}")
-            
-            # For debugging, but avoid printing full messages for privacy
-            print(f"Number of messages: {len(anthropic_messages)}")
-            print(f"System content exists: {system_content is not None}")
-            
-            # Re-raise the exception to properly fail
-            raise
-            
-    def _complete_with_openai(
-        self,
-        model_config: Dict[str, Any],
-        messages: List[Dict[str, Any]],
-        params: Dict[str, Any]
-    ) -> Dict[str, Any]:
-        """
-        Send a completion request to OpenAI's API.
-        
-        Args:
-            model_config: Configuration for the model
-            messages: The conversation messages
-            params: Additional parameters for the request
-            
-        Returns:
-            The model's response message
-        """
-        # This is a placeholder for OpenAI implementation
-        # Will be implemented in a future update
-        raise NotImplementedError("OpenAI integration not yet implemented")
+        return self.model_manager.complete_with_model(model_name, messages, params)
     
     def _process_requirements(
         self,
@@ -313,7 +210,7 @@ class RequiredAIServer:
                 
             # Get the model to use for revision
             model_name = getattr(failed_req, "model", None)
-            model_config = self._get_model_config(model_name) if model_name else default_model_config
+            model_config = self.model_manager.get_model_config(model_name) if model_name else default_model_config
             
             # Create a revision prompt
             revision_prompt = {

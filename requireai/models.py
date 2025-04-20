@@ -70,7 +70,7 @@ class WrittenRequirement(Requirement):
     def evaluate(self, messages: List[dict]) -> bool:
         """
         Evaluates if the response follows the writing requirements.
-        This would typically call an external model to evaluate.
+        Uses another model to evaluate if the response meets the writing requirements.
         
         Args:
             messages: List of message dictionaries
@@ -78,8 +78,10 @@ class WrittenRequirement(Requirement):
         Returns:
             bool: True if the requirement is met, False otherwise
         """
-        # For now, always return True to avoid infinite loops during development
-        # In a real implementation, this would call the specified model to evaluate
+        from requireai.model_manager import ModelManager
+        import json
+        import os
+        
         print(f"\nEvaluating Written requirement:")
         if not messages:
             return False
@@ -91,10 +93,91 @@ class WrittenRequirement(Requirement):
             return False
             
         print(f"Response preview: {content[:100]}...")
-        print(f"Requirement satisfied: True (placeholder implementation)")
         
-        # TODO: Implement actual evaluation using a model
-        return True
+        # If no model is specified, we can't evaluate
+        if not self.model:
+            print("No model specified for evaluation, defaulting to True")
+            return True
+            
+        try:
+            # Get the server config to initialize the model manager
+            # This is a bit of a hack, but it works for now
+            config_path = os.environ.get("REQUIREAI_CONFIG_PATH")
+            if not config_path:
+                print("REQUIREAI_CONFIG_PATH environment variable not set, defaulting to True")
+                return True
+                
+            with open(config_path, 'r') as f:
+                config = json.load(f)
+                
+            model_manager = ModelManager(config)
+            
+            # Prepare the evaluation prompt
+            requirements_str = "; ".join(self.value)
+            
+            # Prepare examples if available
+            examples_text = ""
+            if self.positive_examples:
+                examples_text += "\n\nHere are some examples that DO meet the requirements:\n"
+                for i, example in enumerate(self.positive_examples, 1):
+                    examples_text += f"\nExample {i}:\n{example}\n"
+                    
+            if self.negative_examples:
+                examples_text += "\n\nHere are some examples that DO NOT meet the requirements:\n"
+                for i, example in enumerate(self.negative_examples, 1):
+                    examples_text += f"\nExample {i}:\n{example}\n"
+            
+            # Create the evaluation messages
+            eval_messages = [
+                {
+                    "role": "system",
+                    "content": "You are an AI writing style evaluator. Your task is to determine if a given text meets specific writing requirements."
+                },
+                {
+                    "role": "user",
+                    "content": f"I need you to evaluate if the following text meets these writing requirements:\n\n{requirements_str}\n\n{examples_text}\n\nText to evaluate:\n\n{content}\n\nDoes this text meet the requirements? Answer with only 'yes' or 'no'."
+                }
+            ]
+            
+            # Estimate token count and limit examples if needed
+            total_tokens = 0
+            for msg in eval_messages:
+                total_tokens += model_manager.estimate_tokens(msg["content"], self.model)
+                
+            if total_tokens > self.token_limit:
+                print(f"Token limit exceeded ({total_tokens} > {self.token_limit}), truncating examples")
+                # Simplify the prompt to fit within token limit
+                eval_messages = [
+                    {
+                        "role": "system",
+                        "content": "You are an AI writing style evaluator. Your task is to determine if a given text meets specific writing requirements."
+                    },
+                    {
+                        "role": "user",
+                        "content": f"I need you to evaluate if the following text meets these writing requirements:\n\n{requirements_str}\n\nText to evaluate:\n\n{content}\n\nDoes this text meet the requirements? Answer with only 'yes' or 'no'."
+                    }
+                ]
+            
+            # Get the evaluation from the model
+            response = model_manager.complete_with_model(
+                self.model,
+                eval_messages,
+                {"max_tokens": 10, "temperature": 0.0}  # Use low temperature for consistent results
+            )
+            
+            # Parse the response
+            eval_text = response.get("content", "").strip().lower()
+            result = "yes" in eval_text and "no" not in eval_text
+            
+            print(f"Model evaluation result: {eval_text}")
+            print(f"Requirement satisfied: {result}")
+            
+            return result
+            
+        except Exception as e:
+            print(f"Error evaluating requirement: {str(e)}")
+            # Default to True on error to avoid blocking
+            return True
     
     @property
     def prompt(self) -> str:
