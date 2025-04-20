@@ -23,6 +23,7 @@ setup(
         "flask==2.0.1",
         "werkzeug==2.0.1",
         "requests>=2.25.0",
+        "anthropic>=0.18.0",
     ],
     extras_require={
         "dev": [

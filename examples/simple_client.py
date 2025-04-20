@@ -37,7 +37,7 @@ def main():
     
     # Create a completion
     response = client.create_completion(
-        model="claude-3-7-sonnet-20250219",
+        model="claude-3-5-haiku-latest",
         messages=[
             {"role": "user", "content": "Hello, Claude"}
         ],

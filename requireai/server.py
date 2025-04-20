@@ -4,7 +4,9 @@ Server implementation for RequiredAI.
 
 from typing import List, Dict, Any, Optional
 import json
+import os
 from flask import Flask, request, jsonify
+import anthropic
 from .requirements import Requirements
 
 class RequiredAIServer:
@@ -130,24 +132,102 @@ class RequiredAIServer:
         Returns:
             The model's response message
         """
-        # For testing purposes, generate a response that will fail the Contains requirement
-        # This allows us to test the requirement evaluation and revision process
-        last_message = messages[-1] if messages else {"content": ""}
-        user_content = last_message.get("content", "")
+        provider = model_config.get("provider", "").lower()
         
-        # Simple response generation for testing
-        if "revision_prompt" in user_content:
-            # If this is a revision request, include one of the required values
-            return {
-                "role": "assistant",
-                "content": "I've revised my response to include option (A). Here's my answer with the required format."
-            }
+        if provider == "anthropic":
+            return self._complete_with_anthropic(model_config, messages, params)
+        elif provider == "openai":
+            return self._complete_with_openai(model_config, messages, params)
         else:
-            # Initial response without the required values
+            raise ValueError(f"Unsupported provider: {provider}")
+            
+    def _complete_with_anthropic(
+        self,
+        model_config: Dict[str, Any],
+        messages: List[Dict[str, Any]],
+        params: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Send a completion request to Anthropic's Claude API.
+        
+        Args:
+            model_config: Configuration for the model
+            messages: The conversation messages
+            params: Additional parameters for the request
+            
+        Returns:
+            The model's response message
+        """
+        # Get API key from environment variable
+        api_key = os.environ.get(model_config.get("api_key_env", "ANTHROPIC_API_KEY"))
+        if not api_key:
+            raise ValueError(f"API key environment variable {model_config.get('api_key_env')} not set")
+        
+        # Initialize Anthropic client
+        client = anthropic.Anthropic(api_key=api_key)
+        
+        # Extract parameters
+        model_name = params.get("model", "claude-3-5-haiku-latest")
+        max_tokens = params.get("max_tokens", 1024)
+        temperature = params.get("temperature", 0.7)
+        
+        # Format messages for Anthropic API
+        anthropic_messages = []
+        for msg in messages:
+            if msg["role"] == "system":
+                # Skip system messages as they'll be handled separately
+                continue
+            anthropic_messages.append({
+                "role": "assistant" if msg["role"] == "assistant" else "user",
+                "content": msg["content"]
+            })
+        
+        # Extract system message if present
+        system_message = None
+        for msg in messages:
+            if msg["role"] == "system":
+                system_message = msg["content"]
+                break
+        
+        # Make the API call
+        try:
+            response = client.messages.create(
+                model=model_name,
+                max_tokens=max_tokens,
+                temperature=temperature,
+                system=system_message,
+                messages=anthropic_messages
+            )
+            
+            # Return the response in the expected format
             return {
                 "role": "assistant",
-                "content": "Hello! This is a test response that doesn't meet the Contains requirement."
+                "content": response.content[0].text
             }
+        except Exception as e:
+            print(f"Error calling Anthropic API: {str(e)}")
+            raise
+            
+    def _complete_with_openai(
+        self,
+        model_config: Dict[str, Any],
+        messages: List[Dict[str, Any]],
+        params: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Send a completion request to OpenAI's API.
+        
+        Args:
+            model_config: Configuration for the model
+            messages: The conversation messages
+            params: Additional parameters for the request
+            
+        Returns:
+            The model's response message
+        """
+        # This is a placeholder for OpenAI implementation
+        # Will be implemented in a future update
+        raise NotImplementedError("OpenAI integration not yet implemented")
     
     def _process_requirements(
         self,
