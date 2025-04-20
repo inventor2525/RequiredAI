@@ -11,8 +11,13 @@ from . import BaseModelProvider
 class AnthropicProvider(BaseModelProvider):
     """Provider for Anthropic's Claude API."""
     
-# Register the provider
-BaseModelProvider.register_provider("anthropic", AnthropicProvider)
+    def __init__(self, config: Dict[str, Any]):
+        """Initialize the Anthropic provider."""
+        super().__init__(config)
+        api_key = os.environ.get(config.get("api_key_env", "ANTHROPIC_API_KEY"))
+        if not api_key:
+            raise ValueError(f"API key environment variable {config.get('api_key_env')} not set")
+        self.client = anthropic.Anthropic(api_key=api_key)
     
     def complete(self, messages: List[Dict[str, Any]], params: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -77,13 +82,5 @@ BaseModelProvider.register_provider("anthropic", AnthropicProvider)
             print(f"Error calling Anthropic API: {str(e)}")
             raise
 
-    def __init__(self, config: Dict[str, Any]):
-        """Initialize the Anthropic provider."""
-        super().__init__(config)
-        # Register this provider
-        BaseModelProvider.register_provider("anthropic", AnthropicProvider)
-        
-        api_key = os.environ.get(config.get("api_key_env", "ANTHROPIC_API_KEY"))
-        if not api_key:
-            raise ValueError(f"API key environment variable {config.get('api_key_env')} not set")
-        self.client = anthropic.Anthropic(api_key=api_key)
+# Register the provider
+BaseModelProvider.register_provider("anthropic", AnthropicProvider)

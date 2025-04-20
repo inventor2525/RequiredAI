@@ -99,7 +99,7 @@ class WrittenRequirement(Requirement):
             raise ValueError("No model specified for WrittenRequirement evaluation")
             
         try:
-            # Use the ModelManager singleton directly
+            # Import model_manager only where needed
             from requireai.model_manager import model_manager
             
             # Prepare the evaluation prompt

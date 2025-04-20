@@ -7,7 +7,7 @@ import json
 import os
 from flask import Flask, request, jsonify
 from .requirements import Requirements
-from .model_manager import ModelManager
+from .model_manager import ModelManager, model_manager
 
 class RequiredAIServer:
     """Server for handling RequiredAI requests."""
@@ -27,7 +27,6 @@ class RequiredAIServer:
             "Please revise your response to meet this requirement.")
         
         # Initialize the model manager singleton
-        from .model_manager import ModelManager, model_manager
         if model_manager is None:
             ModelManager(self.config)
         
@@ -58,9 +57,6 @@ class RequiredAIServer:
             
             # Get the model to use
             model_name = data.get("model")
-            
-            # Use ModelManager directly
-            from .model_manager import model_manager
             
             try:
                 # Verify the model exists
@@ -190,9 +186,7 @@ class RequiredAIServer:
                 "content": self.revise_prompt_template.format(requirement_prompt=failed_req.prompt)
             }
             
-            # Get a new response using ModelManager directly
-            from .model_manager import model_manager
-            
+            # Get a new response using ModelManager
             revision_conversation = conversation + [revision_prompt]
             new_response = model_manager.complete_with_model(
                 model_name,
