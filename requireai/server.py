@@ -75,7 +75,8 @@ class RequiredAIServer:
                     requirements, 
                     chat, 
                     prospective_response, 
-                    model_config
+                    model_config,
+                    data
                 )
             else:
                 # If no requirements, just add the response as a single choice
@@ -104,7 +105,8 @@ class RequiredAIServer:
         requirements: List[Dict[str, Any]],
         chat: List[Dict[str, Any]],
         prospective_response: Dict[str, Any],
-        default_model_config: Dict[str, Any]
+        default_model_config: Dict[str, Any],
+        data: Dict[str, Any]
     ) -> List[Dict[str, Any]]:
         """
         Process requirements and revise the response if needed.
