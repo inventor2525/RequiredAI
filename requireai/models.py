@@ -96,21 +96,12 @@ class WrittenRequirement(Requirement):
         
         # If no model is specified, we can't evaluate
         if not self.model:
-            print("No model specified for evaluation, defaulting to True")
-            return True
+            raise ValueError("No model specified for WrittenRequirement evaluation")
             
         try:
-            # Get the server config to initialize the model manager
-            # This is a bit of a hack, but it works for now
-            config_path = os.environ.get("REQUIREAI_CONFIG_PATH")
-            if not config_path:
-                print("REQUIREAI_CONFIG_PATH environment variable not set, defaulting to True")
-                return True
-                
-            with open(config_path, 'r') as f:
-                config = json.load(f)
-                
-            model_manager = ModelManager(config)
+            # Use the ModelManager singleton directly
+            from requireai.model_manager import ModelManager
+            model_manager = ModelManager.get_instance()
             
             # Prepare the evaluation prompt
             requirements_str = "; ".join(self.value)

@@ -82,5 +82,13 @@ class AnthropicProvider(BaseModelProvider):
             print(f"Error calling Anthropic API: {str(e)}")
             raise
 
-# Register the provider
-BaseModelProvider.register_provider("anthropic", AnthropicProvider)
+    def __init__(self, config: Dict[str, Any]):
+        """Initialize the Anthropic provider."""
+        super().__init__(config)
+        # Register this provider
+        BaseModelProvider.register_provider("anthropic", AnthropicProvider)
+        
+        api_key = os.environ.get(config.get("api_key_env", "ANTHROPIC_API_KEY"))
+        if not api_key:
+            raise ValueError(f"API key environment variable {config.get('api_key_env')} not set")
+        self.client = anthropic.Anthropic(api_key=api_key)

@@ -26,11 +26,9 @@ class RequiredAIServer:
             "Your previous response did not meet the following requirement: {requirement_prompt}. "
             "Please revise your response to meet this requirement.")
         
-        # Set the config path in the environment for requirements to use
-        os.environ["REQUIREAI_CONFIG_PATH"] = config_path
-        
-        # Initialize the model manager
-        self.model_manager = ModelManager(self.config)
+        # Initialize the model manager singleton
+        from .model_manager import ModelManager
+        ModelManager.get_instance().__init__(self.config)
         
         self._setup_routes()
     
@@ -59,14 +57,20 @@ class RequiredAIServer:
             
             # Get the model to use
             model_name = data.get("model")
-            model_config = self._get_model_config(model_name)
             
-            if not model_config:
+            # Use ModelManager directly
+            from .model_manager import ModelManager
+            model_manager = ModelManager.get_instance()
+            
+            try:
+                # Verify the model exists
+                model_manager.get_model_config(model_name)
+            except ValueError:
                 return jsonify({"error": f"Model {model_name} not configured"}), 400
             
             # Send the initial request to the model
             chat = data.get("messages", [])
-            prospective_response = self._complete_with_model(model_config, chat, data)
+            prospective_response = model_manager.complete_with_model(model_name, chat, data)
             
             # Process requirements
             revision_history = []
@@ -109,47 +113,7 @@ class RequiredAIServer:
             
             return jsonify(response)
     
-    def _get_model_config(self, model_name: str) -> Dict[str, Any]:
-        """
-        Get the configuration for a specific model.
-        
-        Args:
-            model_name: The name of the model
-            
-        Returns:
-            The model configuration
-        """
-        return self.model_manager.get_model_config(model_name)
-    
-    def _complete_with_model(
-        self, 
-        model_config: Dict[str, Any], 
-        messages: List[Dict[str, Any]],
-        params: Dict[str, Any]
-    ) -> Dict[str, Any]:
-        """
-        Send a completion request to the specified model.
-        
-        Args:
-            model_config: Configuration for the model
-            messages: The conversation messages
-            params: Additional parameters for the request
-            
-        Returns:
-            The model's response message
-        """
-        model_name = params.get("model")
-        if not model_name:
-            # Try to find a model name in the config
-            for name, config in self.config.get("models", {}).items():
-                if config == model_config:
-                    model_name = name
-                    break
-        
-        if not model_name:
-            raise ValueError("Model name not found in parameters or config")
-            
-        return self.model_manager.complete_with_model(model_name, messages, params)
+    # These methods have been removed as we'll use ModelManager directly
     
     def _process_requirements(
         self,
@@ -210,7 +174,15 @@ class RequiredAIServer:
                 
             # Get the model to use for revision
             model_name = getattr(failed_req, "model", None)
-            model_config = self.model_manager.get_model_config(model_name) if model_name else default_model_config
+            if not model_name:
+                # Find the model name from the default config
+                for name, config in self.config.get("models", {}).items():
+                    if config == default_model_config:
+                        model_name = name
+                        break
+            
+            if not model_name:
+                raise ValueError("No model specified for revision")
             
             # Create a revision prompt
             revision_prompt = {
@@ -218,12 +190,15 @@ class RequiredAIServer:
                 "content": self.revise_prompt_template.format(requirement_prompt=failed_req.prompt)
             }
             
-            # Get a new response
+            # Get a new response using ModelManager directly
+            from .model_manager import ModelManager
+            model_manager = ModelManager.get_instance()
+            
             revision_conversation = conversation + [revision_prompt]
-            new_response = self._complete_with_model(
-                model_config, 
+            new_response = model_manager.complete_with_model(
+                model_name,
                 revision_conversation,
-                {}  # No additional params for revision
+                {"max_tokens": 1024}  # Basic params for revision
             )
             
             # Add this revision attempt to the history
