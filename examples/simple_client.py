@@ -39,7 +39,7 @@ def main():
     response = client.create_completion(
         model="haiku",
         messages=[
-            {"role": "user", "content": "Hello, Claude"}
+            {"role": "user", "content": "Is the sky (A) orange, (B) green, (C) blue or (D) all the above?"}
         ],
         requirements=requirements_json,
         max_tokens=1024
