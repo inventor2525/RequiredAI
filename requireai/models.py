@@ -33,8 +33,13 @@ class ContainsRequirement(Requirement):
         
         if not isinstance(content, str):
             return False
+        
+        # Print for debugging
+        print(f"Evaluating Contains requirement on: {content[:50]}...")
+        result = any(val in content for val in self.value)
+        print(f"Contains requirement result: {result}")
             
-        return any(val in content for val in self.value)
+        return result
     
     @property
     def prompt(self) -> str:

@@ -9,8 +9,7 @@ from requireai.requirements import Requirements
 def main():
     # Create a client
     client = RequiredAIClient(
-        base_url="http://localhost:5000",
-        api_key="your_api_key_here"
+        base_url="http://localhost:5000"
     )
     
     # Create requirements

@@ -130,13 +130,24 @@ class RequiredAIServer:
         Returns:
             The model's response message
         """
-        # This would be implemented to route to the appropriate AI provider
-        # based on the model_config
-        # For now, return a placeholder
-        return {
-            "role": "assistant",
-            "content": "This is a placeholder response. In a real implementation, this would be the response from the AI model."
-        }
+        # For testing purposes, generate a response that will fail the Contains requirement
+        # This allows us to test the requirement evaluation and revision process
+        last_message = messages[-1] if messages else {"content": ""}
+        user_content = last_message.get("content", "")
+        
+        # Simple response generation for testing
+        if "revision_prompt" in user_content:
+            # If this is a revision request, include one of the required values
+            return {
+                "role": "assistant",
+                "content": "I've revised my response to include option (A). Here's my answer with the required format."
+            }
+        else:
+            # Initial response without the required values
+            return {
+                "role": "assistant",
+                "content": "Hello! This is a test response that doesn't meet the Contains requirement."
+            }
     
     def _process_requirements(
         self,

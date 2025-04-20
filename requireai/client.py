@@ -9,20 +9,15 @@ import json
 class RequiredAIClient:
     """Client for making requests to a RequiredAI server."""
     
-    def __init__(self, base_url: str, api_key: Optional[str] = None):
+    def __init__(self, base_url: str):
         """
         Initialize the RequiredAI client.
         
         Args:
             base_url: The base URL of the RequiredAI server
-            api_key: Optional API key for authentication
         """
         self.base_url = base_url.rstrip('/')
-        self.api_key = api_key
         self.session = requests.Session()
-        
-        if api_key:
-            self.session.headers.update({"Authorization": f"Bearer {api_key}"})
     
     def create_completion(
         self,
