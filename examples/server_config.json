@@ -2,17 +2,22 @@
   "models": {
     "haiku": {
       "provider": "anthropic",
-      "provider_model": "claude-3-haiku-20240307",
+      "provider_model": "claude-3-5-haiku-latest",
       "api_key_env": "ANTHROPIC_API_KEY"
     },
     "sonnet": {
       "provider": "anthropic",
-      "provider_model": "claude-3-sonnet-20240229",
+      "provider_model": "claude-3-5-sonnet-latest",
       "api_key_env": "ANTHROPIC_API_KEY"
     },
     "opus": {
       "provider": "anthropic",
-      "provider_model": "claude-3-opus-20240229",
+      "provider_model": "claude-3-opus-latest",
+      "api_key_env": "ANTHROPIC_API_KEY"
+    },
+    "sonnet-v2": {
+      "provider": "anthropic",
+      "provider_model": "claude-3-5-sonnet-latest",
       "api_key_env": "ANTHROPIC_API_KEY"
     }
   },

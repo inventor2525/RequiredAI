@@ -229,8 +229,8 @@ class RequiredAIServer:
             # If it's a model not found error, try with a fallback model
             if "not_found_error" in str(e) and "model:" in str(e):
                 try:
-                    print(f"Trying fallback model: claude-3-haiku-20240307")
-                    request_params["model"] = "claude-3-haiku-20240307"
+                    print(f"Trying fallback model: claude-3-5-haiku-latest")
+                    request_params["model"] = "claude-3-5-haiku-latest"
                     response = client.messages.create(**request_params)
                     return {
                         "role": "assistant",

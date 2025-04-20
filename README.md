@@ -48,7 +48,7 @@ Requests work very similar to any chat llm api (and intentionally mirror some of
 import anthropic
 
 message = anthropic.Anthropic().messages.create(
-    model="claude-3-7-sonnet-20240219",
+    model="claude-3-7-sonnet-latest",
     max_tokens=1024,
     messages=[
         {"role": "user", "content": "Hello, Claude"}
