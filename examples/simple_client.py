@@ -14,19 +14,19 @@ def main():
     
     # Create requirements
     contains_req = ContainsRequirement(
-        value=["(A)", "(B)", "(C)"],
-        name="Contains ABC Options"
+        value=["Option (A)", "Option (B)", "Option (C)", "Option (D)"],
+        name="Include Option Label"
     )
     written_req = WrittenRequirement(
         value=[
-            "Think through your answer before providing one",
-            "There shall be thoughts as to think though what the answer should be BEFORE *any* answer in the correct format is written at the end."
+            "First explain your reasoning process step by step",
+            "Before giving your final answer, analyze each option carefully and explain why it is correct or incorrect"
         ],
         positive_examples=[],
         negative_examples=[],
         model="sonnet",
         token_limit=1024,
-        name="Show Reasoning Process"
+        name="Show Step-by-Step Reasoning"
     )
     
     # Convert requirements to JSON
@@ -39,7 +39,7 @@ def main():
     response = client.create_completion(
         model="haiku",
         messages=[
-            {"role": "user", "content": "Is the sky (A) orange, (B) green, (C) blue or (D) all the above?"}
+            {"role": "user", "content": "Which of the following is a renewable energy source?\n\nOption (A): Coal\nOption (B): Natural gas\nOption (C): Solar power\nOption (D): Petroleum"}
         ],
         requirements=requirements_json,
         max_tokens=1024

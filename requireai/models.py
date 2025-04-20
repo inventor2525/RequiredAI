@@ -35,10 +35,11 @@ class ContainsRequirement(Requirement):
             return False
         
         # Print for debugging
-        print(f"Evaluating Contains requirement on: {content[:50]}...")
+        print(f"\nEvaluating Contains requirement:")
+        print(f"Response preview: {content[:100]}...")
         result = any(val in content for val in self.value)
-        print(f"Contains requirement result: {result}")
         print(f"Looking for any of these values: {self.value}")
+        print(f"Requirement satisfied: {result}")
             
         return result
     
