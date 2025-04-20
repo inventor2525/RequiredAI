@@ -69,34 +69,23 @@ class RequiredAIServer:
             prospective_response = model_manager.complete_with_model(model_name, chat, data)
             
             # Process requirements
-            revision_history = []
+            choices = []
             if requirements:
-                prospective_response, revision_history = self._process_requirements(
+                choices = self._process_requirements(
                     requirements, 
                     chat, 
                     prospective_response, 
                     model_config
                 )
-            
-            # Construct the choices array
-            choices = [
-                {
-                    "index": 0,
-                    "message": prospective_response,
-                    "finish_reason": "stop"
-                }
-            ]
-            
-            # Add revision history to choices in reverse order (newest to oldest, excluding the final one)
-            for i, revision in enumerate(revision_history[:-1][::-1], 1):
-                if revision["failed_requirement"] is not None:
-                    choices.append({
-                        "index": i,
-                        "message": revision["message"],
-                        "finish_reason": "failed_requirement",
-                        "requirement_name": revision["failed_requirement"],
-                        "revision_prompt": revision["revision_prompt"]
-                    })
+            else:
+                # If no requirements, just add the response as a single choice
+                choices = [
+                    {
+                        "index": 0,
+                        "message": prospective_response,
+                        "finish_reason": "stop"
+                    }
+                ]
             
             # Construct the final response
             response = {
@@ -109,7 +98,6 @@ class RequiredAIServer:
             
             return jsonify(response)
     
-    # These methods have been removed as we'll use ModelManager directly
     
     def _process_requirements(
         self,
@@ -117,7 +105,7 @@ class RequiredAIServer:
         chat: List[Dict[str, Any]],
         prospective_response: Dict[str, Any],
         default_model_config: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    ) -> List[Dict[str, Any]]:
         """
         Process requirements and revise the response if needed.
         
@@ -128,22 +116,13 @@ class RequiredAIServer:
             default_model_config: The default model configuration to use
             
         Returns:
-            A tuple containing:
-            - The final response message that meets all requirements
-            - A list of revision attempts with their prompts and failed requirements
+            A list of choices with the final response and revision history
         """
         # Convert JSON requirements to requirement objects
         requirement_objects = [Requirements.from_json(req) for req in requirements]
         
-        # Track revision history
-        revision_history = []
-        
-        # Add the initial response to the history
-        revision_history.append({
-            "message": prospective_response,
-            "failed_requirement": None,
-            "revision_prompt": None
-        })
+        # Track choices directly
+        choices = []
         
         while True:  # No iteration limit - continue until all requirements are met
             print("Checking requirements...")
@@ -164,9 +143,28 @@ class RequiredAIServer:
             # If all requirements are met, we're done
             if all_met:
                 print("All requirements met!")
+                # Add the successful response as a choice
+                choices.append({
+                    "message": prospective_response,
+                    "finish_reason": "stop"
+                })
                 break
                 
             print(f"Failed requirement: {failed_req.__class__.__web_name__}")
+            
+            # Create a revision prompt
+            revision_prompt = {
+                "role": "user",
+                "content": self.revise_prompt_template.format(requirement_prompt=failed_req.prompt)
+            }
+            
+            # Add the failed attempt to choices
+            choices.append({
+                "message": prospective_response,
+                "finish_reason": "failed_requirement",
+                "requirement_name": failed_req.__class__.__web_name__,
+                "revision_prompt": revision_prompt
+            })
                 
             # Get the model to use for revision
             model_name = getattr(failed_req, "model", None)
@@ -180,12 +178,6 @@ class RequiredAIServer:
             if not model_name:
                 raise ValueError("No model specified for revision")
             
-            # Create a revision prompt
-            revision_prompt = {
-                "role": "user",
-                "content": self.revise_prompt_template.format(requirement_prompt=failed_req.prompt)
-            }
-            
             # Get a new response using ModelManager
             revision_conversation = conversation + [revision_prompt]
             new_response = model_manager.complete_with_model(
@@ -194,18 +186,15 @@ class RequiredAIServer:
                 {"max_tokens": 1024}  # Basic params for revision
             )
             
-            # Add this revision attempt to the history
-            revision_history.append({
-                "message": prospective_response,
-                "failed_requirement": failed_req.__class__.__web_name__,
-                "revision_prompt": revision_prompt
-            })
-            
             # Update the prospective response for the next iteration
             prospective_response = new_response
         
-        # Return the final response and the revision history
-        return prospective_response, revision_history
+        # Reverse the choices and add indices
+        choices.reverse()
+        for i, choice in enumerate(choices):
+            choice["index"] = i
+            
+        return choices
     
     def _generate_id(self) -> str:
         """Generate a unique ID for the response."""

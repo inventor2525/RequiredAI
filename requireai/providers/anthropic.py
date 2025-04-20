@@ -82,5 +82,3 @@ class AnthropicProvider(BaseModelProvider):
             print(f"Error calling Anthropic API: {str(e)}")
             raise
 
-# Register the provider
-BaseModelProvider.register_provider("anthropic", AnthropicProvider)

@@ -11,11 +11,6 @@ class BaseModelProvider:
     _PROVIDER_REGISTRY: Dict[str, Type["BaseModelProvider"]] = {}
     
     @classmethod
-    def register_provider(cls, provider_name: str, provider_class: Type["BaseModelProvider"]):
-        """Register a provider class with the specified name."""
-        cls._PROVIDER_REGISTRY[provider_name] = provider_class
-    
-    @classmethod
     def get_provider(cls, provider_name: str) -> Type["BaseModelProvider"]:
         """Get a provider class by name."""
         if provider_name not in cls._PROVIDER_REGISTRY:
