@@ -85,8 +85,7 @@ class RequiredAIServer:
                         "index": i,
                         "message": revision["message"],
                         "finish_reason": "failed_requirement",
-                        "requirement_name": revision["failed_requirement"]["name"],
-                        "requirement_type": revision["failed_requirement"]["type"],
+                        "requirement_name": revision["failed_requirement"],
                         "revision_prompt": revision["revision_prompt"]
                     })
             
@@ -212,10 +211,7 @@ class RequiredAIServer:
             # Add this revision attempt to the history
             revision_history.append({
                 "message": prospective_response,
-                "failed_requirement": {
-                    "type": failed_req.__class__.__web_name__,
-                    "name": failed_req.name or failed_req.__class__.__web_name__
-                },
+                "failed_requirement": failed_req.__class__.__web_name__,
                 "revision_prompt": revision_prompt
             })
             
