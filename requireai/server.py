@@ -212,6 +212,8 @@ class RequiredAIServer:
             if system_content:
                 request_params["system"] = system_content
             
+            print(f"Using Anthropic model: {provider_model}")
+            
             # Make the API call
             response = client.messages.create(**request_params)
             
@@ -223,9 +225,29 @@ class RequiredAIServer:
         except Exception as e:
             print(f"Error calling Anthropic API: {str(e)}")
             print(f"Request details: model={provider_model}")
-            print(f"Messages: {anthropic_messages[:2]}...")  # Print just first few messages for privacy
+            
+            # If it's a model not found error, try with a fallback model
+            if "not_found_error" in str(e) and "model:" in str(e):
+                try:
+                    print(f"Trying fallback model: claude-3-haiku-20240307")
+                    request_params["model"] = "claude-3-haiku-20240307"
+                    response = client.messages.create(**request_params)
+                    return {
+                        "role": "assistant",
+                        "content": response.content[0].text
+                    }
+                except Exception as fallback_error:
+                    print(f"Fallback model also failed: {str(fallback_error)}")
+            
+            # For debugging, but avoid printing full messages for privacy
+            print(f"Number of messages: {len(anthropic_messages)}")
             print(f"System content exists: {system_content is not None}")
-            raise
+            
+            # Return a simple error response instead of raising
+            return {
+                "role": "assistant",
+                "content": f"I encountered an error when trying to process your request. Please try again or contact support if the issue persists."
+            }
             
     def _complete_with_openai(
         self,

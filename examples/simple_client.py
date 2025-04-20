@@ -24,7 +24,7 @@ def main():
         ],
         positive_examples=[],
         negative_examples=[],
-        model="sonnet",
+        model="haiku",
         token_limit=1024,
         name="Show Step-by-Step Reasoning"
     )
