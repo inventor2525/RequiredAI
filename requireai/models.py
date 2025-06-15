@@ -4,6 +4,7 @@ Requirement model implementations for RequiredAI.
 
 from dataclasses import dataclass, field
 from typing import List, Optional, Any
+import random
 from .requirements import requirement, Requirement
 
 @requirement("Contains")
@@ -99,60 +100,86 @@ class WrittenRequirement(Requirement):
             raise ValueError("No model specified for WrittenRequirement evaluation")
             
         try:
-            # Import ModelManager only where needed
-            from requireai.model_manager import ModelManager
+            # Select one random requirement from the value list
+            selected_requirement = random.choice(self.value)
             
-            # Prepare the evaluation prompt
-            requirements_str = "; ".join(self.value)
+            # System message focused on task
+            system_msg = "Determine if the given text meets the specified written requirement. Answer with only 'yes' or 'no'."
             
-            # Prepare examples if available
-            examples_text = ""
+            # Base user message
+            user_msg = f"Written requirement: {selected_requirement}\n\nText to evaluate:\n{content}\n\nDoes this text meet the requirement?"
+            
+            # Accumulate positive and negative examples separately
+            positive_examples = []
+            negative_examples = []
+            
+            # Combine all examples for random selection
+            all_examples = []
             if self.positive_examples:
-                examples_text += "\n\nHere are some examples that DO meet the requirements:\n"
-                for i, example in enumerate(self.positive_examples, 1):
-                    examples_text += f"\nExample {i}:\n{example}\n"
-                    
+                for ex in self.positive_examples:
+                    all_examples.append(("positive", ex))
             if self.negative_examples:
-                examples_text += "\n\nHere are some examples that DO NOT meet the requirements:\n"
-                for i, example in enumerate(self.negative_examples, 1):
-                    examples_text += f"\nExample {i}:\n{example}\n"
+                for ex in self.negative_examples:
+                    all_examples.append(("negative", ex))
             
-            # Create the evaluation messages
+            # Randomly select examples up to token limit
+            if all_examples:
+                random.shuffle(all_examples)
+                
+                for example_type, example in all_examples:
+                    # Test adding this example
+                    temp_positive = positive_examples + ([example] if example_type == "positive" else [])
+                    temp_negative = negative_examples + ([example] if example_type == "negative" else [])
+                    
+                    # Build test message with accumulated examples
+                    test_examples_text = ""
+                    if temp_positive:
+                        test_examples_text += "\n\nExamples that meet the requirement:\n" + "\n\n".join(temp_positive)
+                    if temp_negative:
+                        test_examples_text += "\n\nExamples that do NOT meet the requirement:\n" + "\n\n".join(temp_negative)
+                    
+                    test_user_msg = f"Written requirement: {selected_requirement}{test_examples_text}\n\nText to evaluate:\n{content}\n\nDoes this text meet the requirement?"
+                    test_content = system_msg + test_user_msg
+                    
+                    # Check token count
+                    current_tokens = ModelManager.singleton().estimate_tokens(test_content, self.model)
+                    
+                    if current_tokens <= self.token_limit:
+                        # Accept this example
+                        if example_type == "positive":
+                            positive_examples.append(example)
+                        else:
+                            negative_examples.append(example)
+                    else:
+                        # Stop adding examples
+                        break
+            
+            # Build final examples text
+            examples_text = ""
+            if positive_examples:
+                examples_text += "\n\nExamples that meet the requirement:\n" + "\n\n".join(positive_examples)
+            if negative_examples:
+                examples_text += "\n\nExamples that do NOT meet the requirement:\n" + "\n\n".join(negative_examples)
+            
+            # Create final evaluation messages
+            final_user_msg = f"Written requirement: {selected_requirement}{examples_text}\n\nText to evaluate:\n{content}\n\nDoes this text meet the requirement?"
+            
             eval_messages = [
                 {
                     "role": "system",
-                    "content": "You are an AI writing style evaluator. Your task is to determine if a given text meets specific writing requirements."
+                    "content": system_msg
                 },
                 {
-                    "role": "user",
-                    "content": f"I need you to evaluate if the following text meets these writing requirements:\n\n{requirements_str}\n\n{examples_text}\n\nText to evaluate:\n\n{content}\n\nDoes this text meet the requirements? Answer with only 'yes' or 'no'."
+                    "role": "user", 
+                    "content": final_user_msg
                 }
             ]
-            
-            # Estimate token count and limit examples if needed
-            total_tokens = 0
-            for msg in eval_messages:
-                total_tokens += ModelManager.singleton().estimate_tokens(msg["content"], self.model)
-                
-            if total_tokens > self.token_limit:
-                print(f"Token limit exceeded ({total_tokens} > {self.token_limit}), truncating examples")
-                # Simplify the prompt to fit within token limit
-                eval_messages = [
-                    {
-                        "role": "system",
-                        "content": "You are an AI writing style evaluator. Your task is to determine if a given text meets specific writing requirements."
-                    },
-                    {
-                        "role": "user",
-                        "content": f"I need you to evaluate if the following text meets these writing requirements:\n\n{requirements_str}\n\nText to evaluate:\n\n{content}\n\nDoes this text meet the requirements? Answer with only 'yes' or 'no'."
-                    }
-                ]
             
             # Get the evaluation from the model
             response = ModelManager.singleton().complete_with_model(
                 self.model,
                 eval_messages,
-                {"max_tokens": 10, "temperature": 0.0}  # Use low temperature for consistent results
+                {"max_tokens": 1, "temperature": 0.0}  # Use low temperature for consistent results
             )
             
             # Parse the response
@@ -172,7 +199,7 @@ class WrittenRequirement(Requirement):
     @property
     def prompt(self) -> str:
         """
-        Returns a string explaining the writing requirements.
+        Returns a string explaining the written requirements.
         """
         requirements_str = "; ".join(self.value)
-        return f"Your response should follow these writing requirements: {requirements_str}"
+        return f"Your response should follow these written requirements: {requirements_str}"
