@@ -17,33 +17,52 @@ def main():
         value=["Option (A)", "Option (B)", "Option (C)", "Option (D)"],
         name="Include Option Label"
     )
-    written_req = WrittenRequirement(
-        value=[
-            "Do not apologize to the user."
-        ],
-        positive_examples=[],
-        negative_examples=[],
-        model="llama3.3 70b",
-        token_limit=1024,
-        name="Show Step-by-Step Reasoning"
-    )
-    written_req2 = WrittenRequirement(
-        value=[
-            "Only write 1 word answers"
-        ],
-        positive_examples=["1","9","10","100", "Ten"],
-        negative_examples=["one hundred", "ten thousand"],
-        model="llama3.3 70b",
-        token_limit=1024,
-        name="Show Step-by-Step Reasoning"
-    )
     
     # Convert requirements to JSON
-    requirements_json = [
+    requirements_json = Requirements.to_json([
         # Requirements.to_json(contains_req),
-        Requirements.to_json(written_req),
-        Requirements.to_json(written_req2)
-    ]
+        WrittenRequirement(
+            value=[
+                "Do not apologize to the user."
+            ],
+            positive_examples=[],
+            negative_examples=[],
+            model="llama3.3 70b",
+            token_limit=1024,
+            name="Show Step-by-Step Reasoning"
+        ),
+        WrittenRequirement(
+            value=[
+                "Only write 1 word answers"
+            ],
+            positive_examples=["1","9","10","100", "Ten"],
+            negative_examples=["one hundred", "ten thousand"],
+            model="llama3.3 70b",
+            token_limit=1024,
+            name="Show Step-by-Step Reasoning"
+        ),
+        WrittenRequirement(
+            value=[
+                "Only answer with decimal numbers, not words.",  #does not work with llama
+                # "Only answer with integer numbers, not words." #works with llama
+            ],
+            positive_examples=["1","9","10","100", "10000"],
+            negative_examples=["one hundred", "five", "ten thousand"],
+            model="llama3.3 70b",
+            token_limit=1024,
+            name="Show Step-by-Step Reasoning"
+        ),
+        # WrittenRequirement(
+        #     value=[
+        #         "Do not include decimal points."
+        #     ],
+        #     positive_examples=["2", "5"],
+        #     negative_examples=["1.0", "9.0"],
+        #     model="llama3.3 70b",
+        #     token_limit=1024,
+        #     name="Show Step-by-Step Reasoning"
+        # )
+    ])
     
     # Create a completion
     response = client.create_completion(

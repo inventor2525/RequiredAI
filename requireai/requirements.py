@@ -4,6 +4,7 @@ Core requirements functionality for RequiredAI.
 
 from typing import Any, Callable, Dict, List, Type, TypeVar, ClassVar
 from abc import ABC, abstractmethod
+from dataclasses import asdict, fields
 
 T = TypeVar("T")
 
@@ -64,7 +65,7 @@ class Requirements:
     """Utility class for handling requirements."""
     
     @staticmethod
-    def to_json(requirement_instance: Requirement) -> dict:
+    def to_json(requirement_instance: Requirement | List[Requirement]) -> dict | List[dict]:
         """
         Convert a requirement instance to a JSON-serializable dictionary.
         
@@ -74,20 +75,23 @@ class Requirements:
         Returns:
             dict: JSON-serializable representation of the requirement
         """
-        from dataclasses import asdict
+        def _to_json_single(req: Requirement) -> dict:
+            requirement_type = getattr(req.__class__, "__web_name__", None)
+            if not requirement_type:
+                raise ValueError(f"Requirement class {req.__class__.__name__} is not registered")
+            
+            # Use dataclass asdict to get all fields
+            result = asdict(req)
+            result["type"] = requirement_type
+                    
+            return result
         
-        requirement_type = getattr(requirement_instance.__class__, "__web_name__", None)
-        if not requirement_type:
-            raise ValueError(f"Requirement class {requirement_instance.__class__.__name__} is not registered")
-        
-        # Use dataclass asdict to get all fields
-        result = asdict(requirement_instance)
-        result["type"] = requirement_type
-                
-        return result
+        if isinstance(requirement_instance, List):
+            return [_to_json_single(req) for req in requirement_instance]
+        return _to_json_single(requirement_instance)
     
     @staticmethod
-    def from_json(j: dict) -> Any:
+    def from_json(j: dict | List[dict]) -> Requirement | List[Requirement]:
         """
         Create a requirement instance from a JSON dictionary.
         
@@ -97,21 +101,24 @@ class Requirements:
         Returns:
             An instance of the appropriate requirement class
         """
-        from dataclasses import fields
-        
-        requirement_type = j.get("type")
-        if not requirement_type:
-            raise ValueError("Requirement JSON must include a 'type' field")
+        def _from_json_single(json_dict: dict) -> Requirement:
+            requirement_type = json_dict.get("type")
+            if not requirement_type:
+                raise ValueError("Requirement JSON must include a 'type' field")
+                
+            if requirement_type not in _REQUIREMENT_REGISTRY:
+                raise ValueError(f"Unknown requirement type: {requirement_type}")
+                
+            # Create an instance of the requirement class
+            requirement_class = _REQUIREMENT_REGISTRY[requirement_type]
             
-        if requirement_type not in _REQUIREMENT_REGISTRY:
-            raise ValueError(f"Unknown requirement type: {requirement_type}")
+            # Get valid field names for this dataclass
+            valid_fields = {f.name for f in fields(requirement_class)}
             
-        # Create an instance of the requirement class
-        requirement_class = _REQUIREMENT_REGISTRY[requirement_type]
+            # Filter the input dict to only include valid fields
+            kwargs = {k: v for k, v in json_dict.items() if k != "type" and k in valid_fields}
+            return requirement_class(**kwargs)
         
-        # Get valid field names for this dataclass
-        valid_fields = {f.name for f in fields(requirement_class)}
-        
-        # Filter the input dict to only include valid fields
-        kwargs = {k: v for k, v in j.items() if k != "type" and k in valid_fields}
-        return requirement_class(**kwargs)
+        if isinstance(j, List):
+            return [_from_json_single(json_dict) for json_dict in j]
+        return _from_json_single(j)
