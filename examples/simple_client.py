@@ -19,8 +19,7 @@ def main():
     )
     written_req = WrittenRequirement(
         value=[
-            "First explain your reasoning process step by step",
-            "Before giving your final answer, analyze each option carefully and explain why it is correct or incorrect"
+            "Do not apologize to the user."
         ],
         positive_examples=[],
         negative_examples=[],
@@ -31,7 +30,7 @@ def main():
     
     # Convert requirements to JSON
     requirements_json = [
-        Requirements.to_json(contains_req),
+        # Requirements.to_json(contains_req),
         Requirements.to_json(written_req)
     ]
     
@@ -39,7 +38,7 @@ def main():
     response = client.create_completion(
         model="haiku",
         messages=[
-            {"role": "user", "content": "Which of the following is a renewable energy source?\n\nOption (A): Coal\nOption (B): Natural gas\nOption (C): Solar power\nOption (D): Petroleum"}
+            {"role": "user", "content": "YOU ARE A HORIBLE POS."}
         ],
         requirements=requirements_json,
         max_tokens=1024
@@ -47,7 +46,7 @@ def main():
     
     print("Final Response:")
     print(response["choices"][0]["message"]["content"])
-    
+    print(f"\n\n\n\n\n\n{response}\n\n\n\n\n\n\n\n")
     # Display revision history
     if len(response["choices"]) > 1:
         print("\nRevision History:")
