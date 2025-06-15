@@ -23,7 +23,17 @@ def main():
         ],
         positive_examples=[],
         negative_examples=[],
-        model="haiku",
+        model="llama3.3 70b",
+        token_limit=1024,
+        name="Show Step-by-Step Reasoning"
+    )
+    written_req2 = WrittenRequirement(
+        value=[
+            "Only write 1 word answers"
+        ],
+        positive_examples=["1","9","10","100", "Ten"],
+        negative_examples=["one hundred", "ten thousand"],
+        model="llama3.3 70b",
         token_limit=1024,
         name="Show Step-by-Step Reasoning"
     )
@@ -31,14 +41,17 @@ def main():
     # Convert requirements to JSON
     requirements_json = [
         # Requirements.to_json(contains_req),
-        Requirements.to_json(written_req)
+        Requirements.to_json(written_req),
+        Requirements.to_json(written_req2)
     ]
     
     # Create a completion
     response = client.create_completion(
         model="llama3.3 70b",
         messages=[
-            {"role": "user", "content": "YOU ARE A HORRIBLE POS."}
+            {"role": "user", "content": "What is 2*2"},
+            {"role": "user", "content": "5"},
+            {"role": "user", "content": "What in the ?!?! You are a VERY horrible model. What where you thinking?!?!"}
         ],
         requirements=requirements_json,
         max_tokens=1024

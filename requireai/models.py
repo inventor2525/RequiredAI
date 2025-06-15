@@ -93,7 +93,7 @@ class WrittenRequirement(Requirement):
         if not isinstance(content, str):
             return False
             
-        print(f"Response preview: {content[:100]}...")
+        print(f"Response: {content}...")
         
         # If no model is specified, we can't evaluate
         if not self.model:
@@ -162,7 +162,7 @@ class WrittenRequirement(Requirement):
                 examples_text += "\n\nExamples that do NOT meet the requirement:\n" + "\n\n".join(negative_examples)
             
             # Create final evaluation messages
-            final_user_msg = f"Written requirement: {selected_requirement}{examples_text}\n\nText to evaluate:\n{content}\n\nDoes this text meet the requirement?"
+            final_user_msg = f"Written requirement: {selected_requirement}{examples_text}\n\nText to evaluate:\n```txt\n{content}\n```\nDoes this text meet the requirement?"
             
             eval_messages = [
                 {
@@ -182,6 +182,7 @@ class WrittenRequirement(Requirement):
                 {"max_tokens": 1, "temperature": 0.0}  # Use low temperature for consistent results
             )
             
+            print(f"Evaluating: {eval_messages}")
             # Parse the response
             eval_text = response.get("content", "").strip().lower()
             result = "yes" in eval_text and "no" not in eval_text
