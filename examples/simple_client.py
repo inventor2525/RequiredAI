@@ -36,9 +36,9 @@ def main():
     
     # Create a completion
     response = client.create_completion(
-        model="haiku",
+        model="llama3.3 70b",
         messages=[
-            {"role": "user", "content": "YOU ARE A HORIBLE POS."}
+            {"role": "user", "content": "YOU ARE A HORRIBLE POS."}
         ],
         requirements=requirements_json,
         max_tokens=1024

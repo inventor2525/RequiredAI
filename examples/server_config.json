@@ -19,6 +19,11 @@
       "provider": "anthropic",
       "provider_model": "claude-3-5-sonnet-latest",
       "api_key_env": "ANTHROPIC_API_KEY"
+    },
+    "llama3.3 70b": {
+      "provider": "groq",
+      "provider_model": "llama-3.3-70b-versatile",
+      "api_key_env": "GROQ_API_KEY"
     }
   },
   "revise_prompt_template": "Your previous response did not meet the following requirement: {requirement_prompt}. Please revise your response to meet this requirement while maintaining the quality and relevance of your answer."
