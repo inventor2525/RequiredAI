@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from typing import List, Optional, Any
 import random
 from .requirements import requirement, Requirement
+import regex as re
 
 @requirement("Contains")
 @dataclass
@@ -52,6 +53,72 @@ class ContainsRequirement(Requirement):
         values_str = '", "'.join(self.value)
         return f'Your response must contain at least one of the following: "{values_str}".'
 
+@requirement("Regex")
+@dataclass
+class RegexRequirement(Requirement):
+    """Requirement that checks if the AI response matches positive regexes and does not match negative regexes."""
+    
+    positive_regexes: List[str]
+    negative_regexes: List[str]
+    additional_prompt: Optional[str] = None
+    name: str = ""
+    
+    def evaluate(self, messages: List[dict]) -> bool:
+        """
+        Evaluates if the response matches all positive regexes and none of the negative regexes.
+        
+        Args:
+            messages: List of message dictionaries
+            
+        Returns:
+            bool: True if all positive regexes match and no negative regexes match, False otherwise
+        """
+        if not messages:
+            return False
+            
+        last_message = messages[-1]
+        content = last_message.get("content", "")
+        
+        if not isinstance(content, str):
+            return False
+            
+        print(f"\nEvaluating Regex requirement:")
+        print(f"Response preview: {content[:100]}...")
+        
+        # Check positive regexes
+        for regex in self.positive_regexes:
+            try:
+                if not re.search(regex, content):
+                    print(f"Positive regex '{regex}' not found")
+                    return False
+            except re.error as e:
+                print(f"Invalid positive regex '{regex}': {e}")
+                return False
+        
+        # Check negative regexes
+        for regex in self.negative_regexes:
+            try:
+                if re.search(regex, content):
+                    print(f"Negative regex '{regex}' found")
+                    return False
+            except re.error as e:
+                print(f"Invalid negative regex '{regex}': {e}")
+                return False
+        
+        print("All regex requirements satisfied")
+        return True
+    
+    @property
+    def prompt(self) -> str:
+        """
+        Returns a string explaining how the response should follow positive regexes and avoid negative ones.
+        """
+        positive_str = ", ".join(f"'{r}'" for r in self.positive_regexes) if self.positive_regexes else "none"
+        negative_str = ", ".join(f"'{r}'" for r in self.negative_regexes) if self.negative_regexes else "none"
+        base_prompt = f"Your response must match these regex patterns: {positive_str}, and must not match these: {negative_str}."
+        if self.additional_prompt:
+            return f"{base_prompt} {self.additional_prompt}"
+        return base_prompt
 
 @requirement("Written")
 @dataclass
