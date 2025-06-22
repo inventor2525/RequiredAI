@@ -113,12 +113,24 @@ class RegexRequirement(Requirement):
         """
         Returns a string explaining how the response should follow positive regexes and avoid negative ones.
         """
-        positive_str = ", ".join(f"'{r}'" for r in self.positive_regexes) if self.positive_regexes else "none"
-        negative_str = ", ".join(f"'{r}'" for r in self.negative_regexes) if self.negative_regexes else "none"
-        base_prompt = f"Your response must match these regex patterns: {positive_str}, and must not match these: {negative_str}."
+        positive_str = (
+            "```txt\n" + "\n".join(self.positive_regexes) + "\n```"
+            if self.positive_regexes else None
+        )
+        negative_str = (
+            "```txt\n" + "\n".join(self.negative_regexes) + "\n```"
+            if self.negative_regexes else None
+        )
+        
+        prompt_parts = []
+        if positive_str:
+            prompt_parts.append(f"Your response must match these regex patterns:\n{positive_str}")
+        if negative_str:
+            prompt_parts.append(f"Your response must not match these regex patterns:\n{negative_str}")
+        
         if self.additional_prompt:
-            return f"{base_prompt} {self.additional_prompt}"
-        return base_prompt
+            prompt_parts.append(self.additional_prompt)
+        return "\n".join(prompt_parts) if prompt_parts else None
 
 @requirement("Written")
 @dataclass
