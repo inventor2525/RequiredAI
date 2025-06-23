@@ -42,12 +42,70 @@ class RequiredAISystem:
 		# Process requirements
 		choices = []
 		if requirements:
-			choices = self._process_requirements(
-				requirements, 
-				messages, 
-				prospective_response,
-				model_name
-			)
+			requirement_objects = Requirements.from_json(requirements)
+		
+			# Track choices directly
+			chat = list(messages)
+			while True:  # No iteration limit - continue until all requirements are met
+				print("Checking requirements...")
+				
+				# Check if all requirements are met
+				all_met = True
+				failed_req = None
+				
+				# Create a conversation with the prospective response
+				conversation = chat + [prospective_response]
+				
+				for req in requirement_objects:
+					if not req.evaluate(conversation):
+						all_met = False
+						failed_req = req
+						break
+				
+				# If all requirements are met, we're done
+				if all_met:
+					print("All requirements met!")
+					# Add the successful response as a choice
+					choices.append({
+						"message": prospective_response,
+						"finish_reason": "stop"
+					})
+					break
+					
+				print(f"Failed requirement: {failed_req.__class__.__web_name__}")
+				
+				# Create a revision prompt
+				revision_prompt = {
+					"role": "user",
+					"content": self.revise_prompt_template.format(requirement_prompt=failed_req.prompt)
+				}
+				
+				# Add the failed attempt to choices
+				choices.append({
+					"message": prospective_response,
+					"finish_reason": "failed_requirement",
+					"requirement_name": failed_req.__class__.__web_name__,
+					"revision_prompt": revision_prompt
+				})
+					
+				# Use the model from the requirement or fall back to the original model
+				corrector_model_name = getattr(failed_req, "model", None) or model_name
+				
+				# Get a new response using ModelManager
+				revision_conversation = conversation + [revision_prompt]
+				new_response = ModelManager.singleton().complete_with_model(
+					corrector_model_name,
+					revision_conversation,
+					{}  # No additional params needed
+				)
+				
+				# Update the prospective response for the next iteration
+				prospective_response = new_response
+			
+			# Reverse the choices and add indices
+			choices.reverse()
+			for i, choice in enumerate(choices):
+				choice["index"] = i
 		else:
 			# If no requirements, just add the response as a single choice
 			choices = [
@@ -68,94 +126,6 @@ class RequiredAISystem:
 		}
 		
 		return response
-	
-	
-	def _process_requirements(
-		self,
-		requirements: List[Dict[str, Any]],
-		chat: List[Dict[str, Any]],
-		prospective_response: Dict[str, Any],
-		completion_model_name:str
-	) -> List[Dict[str, Any]]:
-		"""
-		Process requirements and revise the response if needed.
-		
-		Args:
-			requirements: List of requirement specifications
-			chat: The original conversation
-			prospective_response: The current response from the model
-			completion_model_name: The default model configuration to use
-			
-		Returns:
-			A list of choices with the final response and revision history
-		"""
-		requirement_objects = Requirements.from_json(requirements)
-		
-		# Track choices directly
-		choices = []
-		
-		while True:  # No iteration limit - continue until all requirements are met
-			print("Checking requirements...")
-			
-			# Check if all requirements are met
-			all_met = True
-			failed_req = None
-			
-			# Create a conversation with the prospective response
-			conversation = chat + [prospective_response]
-			
-			for req in requirement_objects:
-				if not req.evaluate(conversation):
-					all_met = False
-					failed_req = req
-					break
-			
-			# If all requirements are met, we're done
-			if all_met:
-				print("All requirements met!")
-				# Add the successful response as a choice
-				choices.append({
-					"message": prospective_response,
-					"finish_reason": "stop"
-				})
-				break
-				
-			print(f"Failed requirement: {failed_req.__class__.__web_name__}")
-			
-			# Create a revision prompt
-			revision_prompt = {
-				"role": "user",
-				"content": self.revise_prompt_template.format(requirement_prompt=failed_req.prompt)
-			}
-			
-			# Add the failed attempt to choices
-			choices.append({
-				"message": prospective_response,
-				"finish_reason": "failed_requirement",
-				"requirement_name": failed_req.__class__.__web_name__,
-				"revision_prompt": revision_prompt
-			})
-				
-			# Use the model from the requirement or fall back to the original model
-			model_name = getattr(failed_req, "model", None) or completion_model_name
-			
-			# Get a new response using ModelManager
-			revision_conversation = conversation + [revision_prompt]
-			new_response = ModelManager.singleton().complete_with_model(
-				model_name,
-				revision_conversation,
-				{}  # No additional params needed
-			)
-			
-			# Update the prospective response for the next iteration
-			prospective_response = new_response
-		
-		# Reverse the choices and add indices
-		choices.reverse()
-		for i, choice in enumerate(choices):
-			choice["index"] = i
-			
-		return choices
 	
 	def _generate_id(self) -> str:
 		"""Generate a unique ID for the response."""
