@@ -9,6 +9,11 @@ from flask import Flask, request, jsonify
 from .requirements import Requirements
 from .model_manager import ModelManager
 
+# Import providers to register them
+from .providers import BaseModelProvider
+from .providers.anthropic_provider import AnthropicProvider
+from .providers.groq_provider import GroqProvider
+
 class RequiredAIServer:
     """Server for handling RequiredAI requests."""
     

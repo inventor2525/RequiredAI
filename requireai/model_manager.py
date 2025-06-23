@@ -5,9 +5,6 @@ Model manager for RequiredAI.
 from typing import Dict, Any, List, Optional
 from .providers import BaseModelProvider
 
-# Import providers to register them
-from .providers.anthropic import AnthropicProvider
-
 class ModelManager:
     """Manager for model providers."""
     

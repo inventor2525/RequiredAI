@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from typing import List, Optional, Any
 import random
 from .requirements import requirement, Requirement
-import regex as re
+import re
 
 @requirement("Contains")
 @dataclass
