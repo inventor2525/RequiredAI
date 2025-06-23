@@ -20,10 +20,10 @@ setup(
     ],
     python_requires=">=3.7",
     install_requires=[
-        "flask==2.0.1",
-        "werkzeug==2.0.1",
-        "requests>=2.25.0",
-        "anthropic>=0.18.0",
+        "flask",
+        "werkzeug",
+        "requests",
+        "anthropic",
     ],
     extras_require={
         "dev": [
