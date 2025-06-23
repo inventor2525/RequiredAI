@@ -5,7 +5,7 @@ Simple example of using the RequiredAI client.
 from requireai.client import RequiredAIClient
 from requireai.models import ContainsRequirement, WrittenRequirement
 from requireai.requirements import Requirements
-
+import json
 def main():
     # Create a client
     client = RequiredAIClient(
@@ -21,16 +21,16 @@ def main():
     # Convert requirements to JSON
     requirements_json = Requirements.to_json([
         # Requirements.to_json(contains_req),
-        WrittenRequirement(
-            value=[
-                "Do not apologize to the user."
-            ],
-            positive_examples=[],
-            negative_examples=[],
-            model="llama3.3 70b",
-            token_limit=1024,
-            name="Show Step-by-Step Reasoning"
-        ),
+        # WrittenRequirement(
+        #     value=[
+        #         "Do not apologize to the user."
+        #     ],
+        #     positive_examples=[],
+        #     negative_examples=[],
+        #     model="llama3.3 70b",
+        #     token_limit=1024,
+        #     name="Show Step-by-Step Reasoning"
+        # ),
         WrittenRequirement(
             value=[
                 "Only write 1 word answers"
@@ -63,13 +63,13 @@ def main():
         #     name="Show Step-by-Step Reasoning"
         # )
     ])
-    
+    print(json.dumps(requirements_json, indent=4))
     # Create a completion
     response = client.create_completion(
-        model="llama3.3 70b",
+        model="NoApology",
         messages=[
             {"role": "user", "content": "What is 2*2"},
-            {"role": "user", "content": "5"},
+            {"role": "assistant", "content": "5"},
             {"role": "user", "content": "What in the ?!?! You are a VERY horrible model. What where you thinking?!?!"}
         ],
         requirements=requirements_json,

@@ -24,6 +24,23 @@
       "provider": "groq",
       "provider_model": "llama-3.3-70b-versatile",
       "api_key_env": "GROQ_API_KEY"
+    },
+    "NoApology":{
+      "provider": "RequiredAI",
+      "model": "llama3.3 70b",
+      "requirements":[
+        {
+          "value": [
+              "Do not apologize to the user."
+          ],
+          "positive_examples": [],
+          "negative_examples": [],
+          "model": "llama3.3 70b",
+          "token_limit": 1024,
+          "name": "No apologies!",
+          "type": "Written"
+      }
+      ]
     }
   },
   "revise_prompt_template": "Your previous response did not meet the following requirement: {requirement_prompt}. Please revise your response to meet this requirement while maintaining the quality and relevance of your answer."
