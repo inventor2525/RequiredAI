@@ -2,9 +2,9 @@
 Simple example of using the RequiredAI client.
 """
 
-from requireai.client import RequiredAIClient
-from requireai.models import ContainsRequirement, WrittenRequirement
-from requireai.requirements import Requirements
+from RequiredAI.client import RequiredAIClient
+from RequiredAI.models import ContainsRequirement, WrittenRequirement
+from RequiredAI.requirements import Requirements
 import json
 def main():
     # Create a client
@@ -39,7 +39,7 @@ def main():
             positive_examples=["1","9","10","100", "Ten"],
             negative_examples=["one hundred", "ten thousand"],
             token_limit=1024,
-            name="Show Step-by-Step Reasoning"
+            name="1 word answers!"
         ),
         WrittenRequirement(
             evaluation_model="llama3.3 70b",
@@ -50,7 +50,7 @@ def main():
             positive_examples=["1","9","10","100", "10000"],
             negative_examples=["one hundred", "five", "ten thousand"],
             token_limit=1024,
-            name="Show Step-by-Step Reasoning"
+            name="Numbers, not words!"
         ),
         # WrittenRequirement(
         #     evaluation_model="llama3.3 70b",

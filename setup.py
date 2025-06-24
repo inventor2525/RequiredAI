@@ -4,14 +4,14 @@ with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setup(
-    name="requireai",
+    name="RequiredAI",
     version="0.1.0",
-    author="RequiredAI Team",
-    author_email="info@requireai.example.com",
+    author="Charlie Mehlenbeck",
+    author_email="charlie_inventor2003@yahoo.com",
     description="A client and server API for adding requirements to AI responses",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/yourusername/requireai",
+    url="https://github.com/yourusername/RequiredAI",
     packages=find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",

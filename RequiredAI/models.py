@@ -148,7 +148,7 @@ class WrittenRequirement(Requirement):
         Returns:
             bool: True if the requirement is met, False otherwise
         """
-        from requireai.model_manager import ModelManager
+        from RequiredAI.model_manager import ModelManager
         import json
         import os
         
