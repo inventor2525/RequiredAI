@@ -57,12 +57,7 @@ class GroqProvider(BaseModelProvider):
         # Make the API call
         try:
             response = self.client.chat.completions.create(**request_params)
-            
-            # Return the response in the expected format
-            return {
-                "role": "assistant",
-                "content": response.choices[0].message.content
-            }
+            return response.dict()
         except Exception as e:
             print(f"Error calling Groq API: {str(e)}")
             raise

@@ -73,12 +73,7 @@ class AnthropicProvider(BaseModelProvider):
         # Make the API call
         try:
             response = self.client.messages.create(**request_params)
-            
-            # Return the response in the expected format
-            return {
-                "role": "assistant",
-                "content": response.content[0].text
-            }
+            return response.dict()
         except Exception as e:
             print(f"Error calling Anthropic API: {str(e)}")
             raise

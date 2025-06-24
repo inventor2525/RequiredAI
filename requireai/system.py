@@ -1,7 +1,8 @@
-from typing import List, Dict, Any, Optional, ClassVar
+from typing import List, Dict, Any, Optional, ClassVar, Tuple
 import json
-from .requirements import Requirements
+from .requirements import Requirements, Requirement, RequirementResult
 from .model_manager import ModelManager
+from .helpers import *
 
 class RequiredAISystem:
 	"""System for handling RequiredAI chat completions."""
@@ -38,41 +39,55 @@ class RequiredAISystem:
 	
 	def chat_completions(self, model_name:str, requirements:list, messages:List[dict], params:dict) -> dict:
 		prospective_response = ModelManager.singleton().complete_with_model(model_name, messages, params)
+		def prospect_to_choice(prospect:dict, prospects:list) -> dict:
+			return {
+				"id":get_id(prospect),
+				"message": get_msg(prospect),
+				"finish_reason": get_finish_reason(prospect),
+				"prospects":prospects
+			}
+		
+		def prospect_to_prospect_info(prospect:dict, log_element:Optional[dict]=None) -> Tuple[dict, list]:
+			eval_log = [log_element] if log_element else []
+			return {
+				'prospect':prospect,
+				'eval_log':eval_log
+			}, eval_log
+		
+		def eval_log_end(eval_log:List[dict], requirements_met:bool, last_element_fields:Optional[Dict[str,Any]]={}) -> None:
+			eval_log.append({
+				"requirements_met":requirements_met,
+				**last_element_fields
+			})
 		
 		# Process requirements
-		choices = []
+		prospect_info, eval_log = prospect_to_prospect_info(prospective_response)
+		prospective_responses = [prospect_info]
+		
 		if requirements:
-			requirement_objects = Requirements.from_json(requirements)
+			requirement_objects:List[Requirement] = Requirements.from_json(requirements)
 		
 			# Track choices directly
 			chat = list(messages)
-			while True:  # No iteration limit - continue until all requirements are met
-				print("Checking requirements...")
-				
-				# Check if all requirements are met
-				all_met = True
-				failed_req = None
-				
+			all_requirements_met = False
+			while not all_requirements_met:
 				# Create a conversation with the prospective response
-				conversation = chat + [prospective_response]
+				conversation = chat + [get_msg(prospective_response)]
 				
+				failed_req = None
+				all_requirements_met = True
 				for req in requirement_objects:
-					if not req.evaluate(conversation):
-						all_met = False
+					req_evaluation = req.evaluate(conversation)
+					eval_log.append(req_evaluation.evaluation_log)
+					if not req_evaluation:
+						all_requirements_met = False
 						failed_req = req
 						break
 				
 				# If all requirements are met, we're done
-				if all_met:
-					print("All requirements met!")
-					# Add the successful response as a choice
-					choices.append({
-						"message": prospective_response,
-						"finish_reason": "stop"
-					})
+				if all_requirements_met:
+					eval_log_end(eval_log, True)
 					break
-					
-				print(f"Failed requirement: {failed_req.__class__.__web_name__}")
 				
 				# Create a revision prompt
 				revision_prompt = {
@@ -80,41 +95,27 @@ class RequiredAISystem:
 					"content": self.revise_prompt_template.format(requirement_prompt=failed_req.prompt)
 				}
 				
-				# Add the failed attempt to choices
-				choices.append({
-					"message": prospective_response,
-					"finish_reason": "failed_requirement",
-					"requirement_name": failed_req.__class__.__web_name__,
-					"revision_prompt": revision_prompt
-				})
-					
 				# Use the model from the requirement or fall back to the original model
-				corrector_model_name = getattr(failed_req, "model", None) or model_name
+				corrector_model_name = getattr(failed_req, "revision_model", None) or model_name
 				
 				# Get a new response using ModelManager
 				revision_conversation = conversation + [revision_prompt]
-				new_response = ModelManager.singleton().complete_with_model(
-					corrector_model_name,
-					revision_conversation,
-					{}  # No additional params needed
-				)
+				revision_input = {
+					"model_name": corrector_model_name,
+					"messages": revision_conversation,
+					"params": {}
+				}
+				new_response = ModelManager.singleton().complete_with_model(**revision_input)
+				
+				eval_log_end(eval_log, False, {
+					"revision_input":revision_input,
+					"revision_id":get_id(new_response)
+				})
 				
 				# Update the prospective response for the next iteration
 				prospective_response = new_response
-			
-			# Reverse the choices and add indices
-			choices.reverse()
-			for i, choice in enumerate(choices):
-				choice["index"] = i
-		else:
-			# If no requirements, just add the response as a single choice
-			choices = [
-				{
-					"index": 0,
-					"message": prospective_response,
-					"finish_reason": "stop"
-				}
-			]
+				prospect_info, eval_log = prospect_to_prospect_info(prospective_response)
+				prospective_responses.append(prospect_info)
 		
 		# Construct the final response
 		response = {
@@ -122,7 +123,7 @@ class RequiredAISystem:
 			"object": "chat.completion",
 			"created": self._get_timestamp(),
 			"model": model_name,
-			"choices": choices
+			"choices": [prospect_to_choice(prospective_response, prospective_responses)]
 		}
 		
 		return response

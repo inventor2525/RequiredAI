@@ -5,7 +5,8 @@ Requirement model implementations for RequiredAI.
 from dataclasses import dataclass, field
 from typing import List, Optional, Any
 import random
-from .requirements import requirement, Requirement
+from .helpers import *
+from .requirements import requirement, Requirement, RequirementResult
 import re
 
 @requirement("Contains")
@@ -15,8 +16,9 @@ class ContainsRequirement(Requirement):
     
     value: List[str]
     name: str = ""
+    revision_model: Optional[str] = None
     
-    def evaluate(self, messages: List[dict]) -> bool:
+    def evaluate(self, messages: List[dict]) -> RequirementResult:
         """
         Checks that the last message in the passed conversation (which is presumed 
         to be from an AI), contains any of the values in value.
@@ -27,23 +29,13 @@ class ContainsRequirement(Requirement):
         Returns:
             bool: True if the last message contains any of the values, False otherwise
         """
-        if not messages:
-            return False
-            
         last_message = messages[-1]
         content = last_message.get("content", "")
         
-        if not isinstance(content, str):
-            return False
-        
         # Print for debugging
-        print(f"\nEvaluating Contains requirement:")
-        print(f"Response preview: {content[:100]}...")
         result = any(val in content for val in self.value)
-        print(f"Looking for any of these values: {self.value}")
-        print(f"Requirement satisfied: {result}")
-            
-        return result
+        
+        return RequirementResult.construct(self, result)
     
     @property
     def prompt(self) -> str:
@@ -62,8 +54,9 @@ class RegexRequirement(Requirement):
     negative_regexes: List[str]
     additional_prompt: Optional[str] = None
     name: str = ""
+    revision_model: Optional[str] = None
     
-    def evaluate(self, messages: List[dict]) -> bool:
+    def evaluate(self, messages: List[dict]) -> RequirementResult:
         """
         Evaluates if the response matches all positive regexes and none of the negative regexes.
         
@@ -73,40 +66,36 @@ class RegexRequirement(Requirement):
         Returns:
             bool: True if all positive regexes match and no negative regexes match, False otherwise
         """
-        if not messages:
-            return False
-            
         last_message = messages[-1]
         content = last_message.get("content", "")
-        
-        if not isinstance(content, str):
-            return False
-            
-        print(f"\nEvaluating Regex requirement:")
-        print(f"Response preview: {content[:100]}...")
         
         # Check positive regexes
         for regex in self.positive_regexes:
             try:
                 if not re.search(regex, content):
-                    print(f"Positive regex '{regex}' not found")
-                    return False
+                    return RequirementResult.construct(self, False, {
+                        "pattern_type":"positive",
+                        "pattern":regex
+                    })
             except re.error as e:
-                print(f"Invalid positive regex '{regex}': {e}")
-                return False
+                return RequirementResult.construct(self, False, {
+                    "error":f"Invalid positive regex '{regex}': {e}"
+                })
         
         # Check negative regexes
         for regex in self.negative_regexes:
             try:
                 if re.search(regex, content):
-                    print(f"Negative regex '{regex}' found")
-                    return False
+                    return RequirementResult.construct(self, False, {
+                        "pattern_type":"negative",
+                        "pattern":regex
+                    })
             except re.error as e:
-                print(f"Invalid negative regex '{regex}': {e}")
-                return False
+                return RequirementResult.construct(self, False, {
+                    "error":f"Invalid negative regex '{regex}': {e}"
+                })
         
-        print("All regex requirements satisfied")
-        return True
+        return RequirementResult.construct(self, True)
     
     @property
     def prompt(self) -> str:
@@ -140,14 +129,15 @@ class WrittenRequirement(Requirement):
     follows specific writing instructions.
     """
     
+    evaluation_model: str
     value: List[str]
     positive_examples: List[str] = field(default_factory=list)
     negative_examples: List[str] = field(default_factory=list)
-    model: Optional[str] = None
     token_limit: int = 1024
     name: str = ""
+    revision_model: Optional[str] = None
     
-    def evaluate(self, messages: List[dict]) -> bool:
+    def evaluate(self, messages: List[dict]) -> RequirementResult:
         """
         Evaluates if the response follows the writing requirements.
         Uses another model to evaluate if the response meets the writing requirements.
@@ -162,31 +152,15 @@ class WrittenRequirement(Requirement):
         import json
         import os
         
-        print(f"\nEvaluating Written requirement:")
-        if not messages:
-            return False
-            
         last_message = messages[-1]
         content = last_message.get("content", "")
         
-        if not isinstance(content, str):
-            return False
-            
-        print(f"Response: {content}...")
-        
-        # If no model is specified, we can't evaluate
-        if not self.model:
-            raise ValueError("No model specified for WrittenRequirement evaluation")
-            
         try:
             # Select one random requirement from the value list
             selected_requirement = random.choice(self.value)
             
             # System message focused on task
             system_msg = "Determine if the given text meets the specified written requirement. Answer with only 'yes' or 'no'."
-            
-            # Base user message
-            user_msg = f"Written requirement: {selected_requirement}\n\nText to evaluate:\n{content}\n\nDoes this text meet the requirement?"
             
             # Accumulate positive and negative examples separately
             positive_examples = []
@@ -221,7 +195,7 @@ class WrittenRequirement(Requirement):
                     test_content = system_msg + test_user_msg
                     
                     # Check token count
-                    current_tokens = ModelManager.singleton().estimate_tokens(test_content, self.model)
+                    current_tokens = ModelManager.singleton().estimate_tokens(test_content, self.evaluation_model)
                     
                     if current_tokens <= self.token_limit:
                         # Accept this example
@@ -255,26 +229,26 @@ class WrittenRequirement(Requirement):
             ]
             
             # Get the evaluation from the model
-            response = ModelManager.singleton().complete_with_model(
-                self.model,
-                eval_messages,
-                {"max_tokens": 1, "temperature": 0.0}  # Use low temperature for consistent results
-            )
+            eval_args = {
+                "model_name":self.evaluation_model,
+                "messages":eval_messages,
+                "params":{"max_tokens": 1, "temperature": 0.0}  # Use low temperature for consistent results
+            }
+            response = ModelManager.singleton().complete_with_model(**eval_args)
             
-            print(f"Evaluating: {eval_messages}")
             # Parse the response
-            eval_text = response.get("content", "").strip().lower()
+            eval_text = get_msg_content(response).strip().lower()
             result = "yes" in eval_text and "no" not in eval_text
             
-            print(f"Model evaluation result: {eval_text}")
-            print(f"Requirement satisfied: {result}")
-            
-            return result
+            return RequirementResult.construct(self, result, {
+                "evaluation":eval_args,
+                "eval_result":result
+            })
             
         except Exception as e:
-            print(f"Error evaluating requirement: {str(e)}")
-            # Default to True on error to avoid blocking
-            return True
+            return RequirementResult.construct(self, False, {
+                "error":f"Error evaluating written requirement '{self.name}': {str(e)}"
+            })
     
     @property
     def prompt(self) -> str:

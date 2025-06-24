@@ -2,15 +2,35 @@
 Core requirements functionality for RequiredAI.
 """
 
-from typing import Any, Callable, Dict, List, Type, TypeVar, ClassVar
+from typing import Any, Callable, Dict, List, Type, TypeVar, ClassVar, Optional, Tuple
 from abc import ABC, abstractmethod
-from dataclasses import asdict, fields
+from dataclasses import asdict, fields, dataclass, field
 
 T = TypeVar("T")
 
 # Registry to store requirement types
 _REQUIREMENT_REGISTRY: Dict[str, Type] = {}
 
+@dataclass
+class RequirementResult:
+    passed_eval:bool
+    evaluation_log:Optional[dict] = field(default=None)
+    
+    def __bool__(self):
+        return self.passed_eval
+    
+    @staticmethod
+    def construct(requirement:'Requirement', passed:bool, extra_log_fields:Optional[Dict[str,Any]]={}) -> 'RequirementResult':
+        return RequirementResult(
+            passed_eval=passed,
+            evaluation_log={
+                "requirement_type": type(requirement).__web_name__,
+                "requirement_name": requirement.name,
+                "passed":passed,
+                **extra_log_fields
+            }
+        )
+    
 class Requirement(ABC):
     """Base abstract class for all requirements."""
     
@@ -19,9 +39,10 @@ class Requirement(ABC):
     
     # Name for the requirement instance
     name: str = ""
+    revision_model: Optional[str] = None
     
     @abstractmethod
-    def evaluate(self, messages: List[dict]) -> bool:
+    def evaluate(self, messages: List[dict]) -> RequirementResult:
         """
         Evaluate if the requirement is met in the given messages.
         

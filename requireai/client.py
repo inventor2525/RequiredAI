@@ -23,9 +23,7 @@ class RequiredAIClient:
         self,
         model: str,
         messages: List[Dict[str, Any]],
-        requirements: List[Dict[str, Any]],
-        max_tokens: int = 1024,
-        temperature: float = 0.7,
+        requirements: List[Dict[str, Any]]=[],
         **kwargs
     ) -> Dict[str, Any]:
         """
@@ -35,8 +33,6 @@ class RequiredAIClient:
             model: The model to use for the completion
             messages: The conversation messages
             requirements: The requirements to apply to the response
-            max_tokens: Maximum number of tokens to generate
-            temperature: Sampling temperature
             **kwargs: Additional parameters to pass to the API
             
         Returns:
@@ -48,8 +44,6 @@ class RequiredAIClient:
             "model": model,
             "messages": messages,
             "requirements": requirements,
-            "max_tokens": max_tokens,
-            "temperature": temperature,
             **kwargs
         }
         
