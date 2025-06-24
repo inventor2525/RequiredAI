@@ -242,7 +242,8 @@ class WrittenRequirement(Requirement):
             
             return RequirementResult.construct(self, result, {
                 "evaluation":eval_args,
-                "eval_result":result
+                "eval_result":result,
+                "response":response
             })
             
         except Exception as e:
