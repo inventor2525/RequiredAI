@@ -11,7 +11,7 @@ class RequiredAIProvider(BaseModelProvider):
 	def __init__(self, config: Dict[str, Any]):
 		"""Initialize the RequiredAI provider."""
 		super().__init__(config)
-		self.model_name:str = config["model"]
+		self.model_name:str = config["provider_model"]
 		self.requirements:list = config["requirements"]
 		
 	def complete(self, messages: List[Dict[str, Any]], params: Dict[str, Any]) -> Dict[str, Any]:

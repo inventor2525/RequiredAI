@@ -27,7 +27,7 @@
     },
     "NoApology":{
       "provider": "RequiredAI",
-      "model": "llama3.3 70b",
+      "provider_model": "llama3.3 70b",
       "requirements":[
         {
           "evaluation_model": "llama3.3 70b",

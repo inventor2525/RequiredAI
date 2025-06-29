@@ -51,6 +51,35 @@ class RequiredAIServer:
             if "error" in response:
                 return jsonify(response), 400
             return jsonify(response)
+        
+        @self.app.route('/v1/models/add', methods=['POST'])
+        def add_model():
+            """
+            Add or override a model configuration in the ModelManager.
+            Expects a JSON payload with the model configuration.
+            """
+            data = request.json
+            if not data:
+                return jsonify({"error": "No configuration provided"}), 400
+            
+            try:
+                model_name = data.get("name")
+                if not model_name:
+                    return jsonify({"error": "Model name is required"}), 400
+                
+                # Update ModelManager's configuration
+                model_manager = ModelManager.singleton()
+                model_manager.models_config[model_name] = data
+                # Clear any existing provider instance to force reinitialization
+                model_manager.provider_instances.pop(model_name, None)
+                
+                # Save updated configuration to disk
+                with open(self.config_path, 'w') as f:
+                    json.dump(self.config, f, indent=2)
+                
+                return jsonify({"message": f"Model {model_name} added or updated successfully"})
+            except Exception as e:
+                return jsonify({"error": f"Failed to add model: {str(e)}"}), 500
     
     def run(self, host: str = "0.0.0.0", port: int = 5000, debug: bool = False):
         """

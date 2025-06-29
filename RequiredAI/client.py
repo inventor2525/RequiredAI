@@ -3,6 +3,7 @@ Client API for RequiredAI.
 """
 
 from typing import List, Dict, Any, Optional
+from .ModelConfig import ModelConfig
 import requests
 import json
 
@@ -48,6 +49,23 @@ class RequiredAIClient:
         }
         
         response = self.session.post(endpoint, json=payload)
+        response.raise_for_status()
+        
+        return response.json()
+    
+    def add_model(self, model: ModelConfig) -> Dict[str, Any]:
+        """
+        Send a model configuration to the server to be added to the ModelManager.
+        
+        Args:
+            model: The Model instance containing the configuration
+            
+        Returns:
+            The API response as a dictionary
+        """
+        endpoint = f"{self.base_url}/v1/models/add"
+        
+        response = self.session.post(endpoint, json=model.to_json())
         response.raise_for_status()
         
         return response.json()
