@@ -3,8 +3,8 @@ Simple example of using the RequiredAI client.
 """
 
 from RequiredAI.client import RequiredAIClient
-from RequiredAI.models import ContainsRequirement, WrittenRequirement
-from RequiredAI.requirements import Requirements
+from RequiredAI.RequirementTypes import ContainsRequirement, WrittenRequirement
+from RequiredAI.Requirement import Requirements
 import json
 def main():
     # Create a client

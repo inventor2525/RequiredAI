@@ -6,9 +6,9 @@ from typing import List, Dict, Any, Optional
 import json
 import os
 from flask import Flask, request, jsonify
-from .requirements import *
-from .models import *
-from .model_manager import ModelManager
+from .Requirement import *
+from .RequirementTypes import *
+from .ModelManager import ModelManager
 from .system import RequiredAISystem
 
 # Import providers to register them

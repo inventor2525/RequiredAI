@@ -1,5 +1,5 @@
 from typing import List, Dict, Any, Optional, Tuple, Union
-from .requirements import Requirements, Requirement
+from .Requirement import Requirements, Requirement
 from dataclasses import dataclass, field, asdict
 
 @dataclass

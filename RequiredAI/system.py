@@ -1,7 +1,7 @@
 from typing import List, Dict, Any, Optional, ClassVar, Tuple
 import json
-from .requirements import Requirements, Requirement, RequirementResult
-from .model_manager import ModelManager
+from .Requirement import Requirements, Requirement, RequirementResult
+from .ModelManager import ModelManager
 from .helpers import *
 
 class RequiredAISystem:

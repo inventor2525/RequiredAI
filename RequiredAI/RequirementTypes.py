@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from typing import List, Optional, Any
 import random
 from .helpers import *
-from .requirements import requirement, Requirement, RequirementResult
+from .Requirement import requirement, Requirement, RequirementResult
 import re
 
 @requirement("Contains")
@@ -148,7 +148,7 @@ class WrittenRequirement(Requirement):
         Returns:
             bool: True if the requirement is met, False otherwise
         """
-        from RequiredAI.model_manager import ModelManager
+        from RequiredAI.ModelManager import ModelManager
         import json
         import os
         

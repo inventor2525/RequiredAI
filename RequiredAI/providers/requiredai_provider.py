@@ -1,7 +1,7 @@
 import os
 from typing import Dict, List, Any, Optional
 from ..system import RequiredAISystem
-from ..requirements import Requirements
+from ..Requirement import Requirements
 from . import BaseModelProvider, provider
 
 @provider('RequiredAI')
