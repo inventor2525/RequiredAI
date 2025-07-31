@@ -3,6 +3,7 @@ from typing import Dict, List, Any, Optional
 from ..system import RequiredAISystem
 from ..Requirement import Requirements
 from . import BaseModelProvider, provider
+from ..ModelConfig import ContextOriginConfig
 
 @provider('RequiredAI')
 class RequiredAIProvider(BaseModelProvider):
@@ -13,6 +14,8 @@ class RequiredAIProvider(BaseModelProvider):
 		super().__init__(config)
 		self.model_name:str = config["provider_model"]
 		self.requirements:list = config["requirements"]
+		if len(config.get("context_origin_config", {}))>0:
+			self.context_origin_config: ContextOriginConfig = ContextOriginConfig.from_json( config.get("context_origin_config") )
 		
 	def complete(self, messages: List[Dict[str, Any]], params: Dict[str, Any]) -> Dict[str, Any]:
 		"""

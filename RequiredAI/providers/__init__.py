@@ -41,7 +41,7 @@ class BaseModelProvider:
         """
         raise NotImplementedError("Subclasses must implement this method")
     
-    def estimate_tokens(self, text: str, model: str) -> int:
+    def estimate_tokens(self, text: str) -> int:
         """
         Estimate the number of tokens in a string.
         

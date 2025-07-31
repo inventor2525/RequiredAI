@@ -30,3 +30,11 @@ def get_finish_reason(response :Dict[str,List[Dict[str,str]]]) -> str:
     if len(choices) == 0:
         return ""
     return choices[0].get('finish_reason', f"Value Error '{response}' has no finish_reason")
+
+def code_block_text(text:str, language:str='txt'):
+    '''Wraps text in a markdown code block of the specified language.'''
+    return f"```{language}\n{text}\n```"
+
+def indent_text(text:str, indent:str='\t') -> str:
+    '''Indent text over with 'indent' str.'''
+    return indent + f'\n{indent}'.join(text.split('\n'))

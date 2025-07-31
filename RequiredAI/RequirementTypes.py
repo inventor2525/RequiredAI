@@ -3,7 +3,7 @@ Requirement model implementations for RequiredAI.
 """
 
 from dataclasses import dataclass, field
-from typing import List, Optional, Any
+from typing import List, Optional, Any, Tuple
 import random
 from .helpers import *
 from .Requirement import requirement, Requirement, RequirementResult
@@ -148,23 +148,38 @@ class WrittenRequirement(Requirement):
         Returns:
             bool: True if the requirement is met, False otherwise
         """
-        from RequiredAI.ModelManager import ModelManager
-        import json
-        import os
+        from RequiredAI.ModelManager import ModelManager, BaseModelProvider
+        from RequiredAI.ModelConfig import ContextOriginConfig
         
+        evaluation_model = ModelManager.singleton().get_provider(self.evaluation_model)
         last_message = messages[-1]
-        content = last_message.get("content", "")
+        text_to_evaluate = last_message.get("content", "")
         
+        context_config:ContextOriginConfig = getattr(evaluation_model, "context_origin_config", None)
+        extra_context:str = None
+        extra_system_msg:str = None
+        if context_config:
+            og_system_msg, extra_system_msg, context_messages = context_config.create_messages_from(messages)
+            if og_system_msg:
+                context_messages = [{'role':'system', 'content':og_system_msg}] + context_messages
+            
+            msg_xmls = []
+            worth_including = False
+            for msg in context_messages:
+                role = msg['role']
+                content = msg['content']
+                if role.lower() != "assistant" or content!=text_to_evaluate:
+                    worth_including = True
+                    
+                role_str = f"From__{role}"
+                msg_xmls.append(f"<{role_str}>\n{indent_text(content)}\n</{role_str}>")
+                
+            if worth_including or len(msg_xmls)>1:
+                extra_context = '\n'.join(msg_xmls)
+            
         try:
             # Select one random requirement from the value list
             selected_requirement = random.choice(self.value)
-            
-            # System message focused on task
-            system_msg = "Determine if the given text meets the specified written requirement. Answer with only 'yes' or 'no'."
-            
-            # Accumulate positive and negative examples separately
-            positive_examples = []
-            negative_examples = []
             
             # Combine all examples for random selection
             all_examples = []
@@ -175,47 +190,63 @@ class WrittenRequirement(Requirement):
                 for ex in self.negative_examples:
                     all_examples.append(("negative", ex))
             
+            def construct_msgs(requirement:str, positive_examples:List[str], negative_examples:List[str], extra_context:str) -> Tuple[str, str]:
+                # System Message Construction:
+                system_msg = "# Goal\n\nDetermine if the given text meets the following written requirement. Answer with only 'yes' or 'no'."
+                if extra_system_msg:
+                    system_msg += " (Unless told to do more under 'Additionally'.)"
+                system_msg += "\n\n> Note, for clarity: All requirement, example, and content text given to you are wrapped in markdown code blocks like this '```txt\\n{text}\\n```'."
+                system_msg += f"\n\n# Written Requirement:\n{code_block_text(requirement)}"
+                
+                def examples_to_str(examples:List[str], prefix:str):
+                    return "\n\n".join([f"## {prefix} Example {i+1}\n{code_block_text(e)}" for i,e in enumerate(examples)])
+                
+                if negative_examples:
+                    system_msg += f"\n\n# Examples that do *NOT* meet the requirement:\n" + examples_to_str(negative_examples, "Bad")
+                if positive_examples:
+                    system_msg += "\n\n# Examples that *DO* meet the requirement:\n" + examples_to_str(positive_examples, "Good")
+                
+                if extra_system_msg:
+                    system_msg += "\n\n# Additionally\nIn this case, the application would also like to tell you:\n"
+                    system_msg += code_block_text(extra_system_msg)
+                    system_msg += "\nPlease follow any additional instructions that it may have given you there as well."
+                
+                # User Message Construction:
+                user_msg = ""
+                if extra_context:
+                    user_msg += "# Extra Context\nThe text you are suppose to evaluate in this case comes from a conversation with another AI. For context, here is the conversation that it was responding to in xml that has been indented over for clarity:\n"
+                    extra_context_xml = f"<Other_Conversation>\n{indent_text(extra_context)}\n</Other_Conversation>"
+                    user_msg += code_block_text(extra_context_xml, 'xml') + "\n\n"
+                    
+                user_msg += f"# Text to evaluate:\n{code_block_text(text_to_evaluate)}"
+                user_msg += "\n\n# Question\nDoes this '# Text to evaluate' meet the '# Written Requirement'?"
+                return system_msg, user_msg
+                
             # Randomly select examples up to token limit
+            positive_examples = []
+            negative_examples = []
             if all_examples:
                 random.shuffle(all_examples)
                 
                 for example_type, example in all_examples:
                     # Test adding this example
-                    temp_positive = positive_examples + ([example] if example_type == "positive" else [])
-                    temp_negative = negative_examples + ([example] if example_type == "negative" else [])
+                    temp_positive_examples = positive_examples + ([example] if example_type == "positive" else [])
+                    temp_negative_examples = negative_examples + ([example] if example_type == "negative" else [])
                     
                     # Build test message with accumulated examples
-                    test_examples_text = ""
-                    if temp_positive:
-                        test_examples_text += "\n\nExamples that meet the requirement:\n" + "\n\n".join(temp_positive)
-                    if temp_negative:
-                        test_examples_text += "\n\nExamples that do NOT meet the requirement:\n" + "\n\n".join(temp_negative)
-                    
-                    test_user_msg = f"Written requirement: {selected_requirement}{test_examples_text}\n\nText to evaluate:\n{content}\n\nDoes this text meet the requirement?"
-                    test_content = system_msg + test_user_msg
+                    system_msg, user_msg = construct_msgs(selected_requirement, temp_positive_examples, temp_negative_examples, extra_context)
                     
                     # Check token count
-                    current_tokens = ModelManager.singleton().estimate_tokens(test_content, self.evaluation_model)
+                    current_tokens = evaluation_model.estimate_tokens(system_msg + user_msg)
                     
                     if current_tokens <= self.token_limit:
-                        # Accept this example
-                        if example_type == "positive":
-                            positive_examples.append(example)
-                        else:
-                            negative_examples.append(example)
+                        positive_examples = temp_positive_examples
+                        negative_examples = temp_negative_examples
                     else:
-                        # Stop adding examples
                         break
             
             # Build final examples text
-            examples_text = ""
-            if positive_examples:
-                examples_text += "\n\nExamples that meet the requirement:\n" + "\n\n".join(positive_examples)
-            if negative_examples:
-                examples_text += "\n\nExamples that do NOT meet the requirement:\n" + "\n\n".join(negative_examples)
-            
-            # Create final evaluation messages
-            final_user_msg = f"Written requirement: {selected_requirement}{examples_text}\n\nText to evaluate:\n```txt\n{content}\n```\nDoes this text meet the requirement?"
+            system_msg, user_msg = construct_msgs(selected_requirement, positive_examples, negative_examples, extra_context)
             
             eval_messages = [
                 {
@@ -224,7 +255,7 @@ class WrittenRequirement(Requirement):
                 },
                 {
                     "role": "user", 
-                    "content": final_user_msg
+                    "content": user_msg
                 }
             ]
             

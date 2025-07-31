@@ -39,7 +39,7 @@ class ContextOriginConfig:
             custom_system_message=json_dict.get("custom_system_message", None)
         )
     
-    def create_messages_from(self, messages: List[Dict[str, str]], initial_system_message: Optional[Dict[str, str]] = None) -> List[Dict[str, str]]:
+    def create_messages_from(self, messages: List[Dict[str, str]], initial_system_message: Optional[Dict[str, str]] = None) -> Tuple[Optional[str], Optional[str], List[Dict[str, str]]]:
         """
         Creates a new list of conversation messages based on the configured context origin.
 
@@ -59,8 +59,11 @@ class ContextOriginConfig:
                       is a dictionary with 'role' and 'content' keys.
 
         Returns:
-            A new list of messages representing the constructed conversation context.
+            Optionally the old and the new system message (or none for either where not applicable)
+            followed by a new message list containing the configured excerpt of messages.
         """
+        og_system_message:str = None
+        new_system_message:str = None
         new_conversation_messages: List[Dict[str, str]] = []
         
         effective_conversation_start_idx = 0
@@ -74,16 +77,10 @@ class ContextOriginConfig:
         # Handle system message inclusion
         if self.custom_system_message:
             if self.include_original_system_message and initial_system_message:
-                combined_content = (
-                    f"{self.custom_system_message}\n\n"
-                    "Original model's system message:\n"
-                    "```txt\n"
-                    f"{initial_system_message['content']}"
-                    "```"
-                )
-                new_conversation_messages.append({"role": "system", "content": combined_content})
+                og_system_message = initial_system_message['content']
+                new_system_message = self.custom_system_message
             else:
-                new_conversation_messages.append({"role": "system", "content": self.custom_system_message})
+                new_system_message = self.custom_system_message
         elif self.include_original_system_message and initial_system_message:
             new_conversation_messages.append(initial_system_message)
 
@@ -121,7 +118,7 @@ class ContextOriginConfig:
         elif self.messages_to_include is not None: # Can be int or tuple
             new_conversation_messages.extend(_inner_get_messages(self.messages_to_include))
         
-        return new_conversation_messages
+        return og_system_message, new_system_message, new_conversation_messages
 
 @dataclass
 class ModelConfig:
