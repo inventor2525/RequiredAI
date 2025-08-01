@@ -35,8 +35,11 @@ class RequiredAISystem:
 		Returns:
 			The loaded configuration as a dictionary
 		"""
-		with open(config_path, 'r') as f:
-			return json.load(f)
+		try:
+			with open(config_path, 'r') as f:
+				return json.load(f)
+		except:
+			return {}
 	
 	def chat_completions(self, model_name:str, requirements:list, messages:List[dict], params:dict) -> dict:
 		prospective_response = ModelManager.singleton().complete_with_model(model_name, messages, params)
