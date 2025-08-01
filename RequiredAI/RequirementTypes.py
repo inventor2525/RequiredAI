@@ -43,7 +43,7 @@ class ContainsRequirement(Requirement):
         Returns a string explaining how the conversation did not meet this requirement.
         """
         values_str = '", "'.join(self.value)
-        return f'Your response must contain at least one of the following: "{values_str}".'
+        return f'Per the requirement "{self.name}": Your response must contain at least one of the following: "{values_str}".'
 
 @requirement("Regex")
 @dataclass
@@ -111,7 +111,7 @@ class RegexRequirement(Requirement):
             if self.negative_regexes else None
         )
         
-        prompt_parts = []
+        prompt_parts = [f'Per the requirement "{self.name}": ']
         if positive_str:
             prompt_parts.append(f"Your response must match these regex patterns:\n{positive_str}")
         if negative_str:
@@ -288,4 +288,4 @@ class WrittenRequirement(Requirement):
         Returns a string explaining the written requirements.
         """
         requirements_str = "; ".join(self.value)
-        return f"Your response should follow these written requirements: {requirements_str}"
+        return f'Per the requirement "{self.name}": Your response should follow these written requirements: {requirements_str}'
