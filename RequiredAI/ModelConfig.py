@@ -152,7 +152,7 @@ class ModelConfig:
     provider_model: str
     api_key_env: Optional[str] = None
     requirements: Optional[List[Requirement]] = field(default=None)
-    context_origin_config: ContextOriginConfig = field(default_factory=ContextOriginConfig.default)
+    context_origin_config: Optional[ContextOriginConfig] = field(default=None)
     
     def to_json(self) -> Dict[str, Any]:
         """
@@ -171,9 +171,7 @@ class ModelConfig:
         if self.requirements:
             result["requirements"] = Requirements.to_json(self.requirements)
         
-        # Only include context_origin_config in the JSON if it's not the default
-        default_config = ContextOriginConfig.default()
-        if self.context_origin_config != default_config:
+        if self.context_origin_config:
             result["context_origin_config"] = self.context_origin_config.to_json()
         return result
     
