@@ -1,8 +1,6 @@
 """
 Requirement model implementations for RequiredAI.
 """
-
-from dataclasses import dataclass, field
 from typing import List, Optional, Any, Tuple
 import random
 from .helpers import *
@@ -10,7 +8,7 @@ from .Requirement import requirement, Requirement, RequirementResult
 import re
 
 @requirement("Contains")
-@dataclass
+@json_dataclass
 class ContainsRequirement(Requirement):
     """Requirement that checks if the AI response contains any of the specified values."""
     
@@ -46,7 +44,7 @@ class ContainsRequirement(Requirement):
         return f'Per the requirement "{self.name}": Your response must contain at least one of the following: "{values_str}".'
 
 @requirement("Regex")
-@dataclass
+@json_dataclass
 class RegexRequirement(Requirement):
     """Requirement that checks if the AI response matches positive regexes and does not match negative regexes."""
     
@@ -122,7 +120,7 @@ class RegexRequirement(Requirement):
         return "\n".join(prompt_parts) if prompt_parts else None
 
 @requirement("Written")
-@dataclass
+@json_dataclass
 class WrittenRequirement(Requirement):
     """
     Requirement that uses another model to evaluate if the response 

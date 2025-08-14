@@ -65,7 +65,7 @@ class RequiredAIClient:
         """
         endpoint = f"{self.base_url}/v1/models/add"
         
-        response = self.session.post(endpoint, json=model.to_json())
+        response = self.session.post(endpoint, json=model.to_dict())
         response.raise_for_status()
         
         return response.json()

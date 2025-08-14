@@ -28,9 +28,7 @@ class BaseModelProvider:
     def __init__(self, config: Dict[str, Any]):
         """Initialize the provider with configuration."""
         self.config = config
-        if len(config.get("context_origin_config", {}))>0:
-            self.context_origin_config: ContextOriginConfig = ContextOriginConfig.from_json( config.get("context_origin_config") )
-    
+        
     def complete(self, messages: List[Dict[str, Any]], params: Dict[str, Any]) -> Dict[str, Any]:
         """
         Generate a completion for the given messages.

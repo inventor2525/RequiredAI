@@ -1,9 +1,8 @@
 from typing import List, Dict, Any, Optional, Tuple, Union
 from .Requirement import Requirements, Requirement
-from dataclasses import dataclass, field, asdict
 from .helpers import *
 
-@dataclass
+@json_dataclass
 class ContextOriginConfig:
     """
     Configuration for how conversation context is presented to an evaluation or revision model.
@@ -12,17 +11,6 @@ class ContextOriginConfig:
     messages_to_include: Optional[Union[int, Tuple[int, int], List[Union[int, Tuple[int, int]]]]] = -1
     custom_system_message: Optional[str] = None
 
-    def to_json(self) -> Dict[str, Any]:
-        """
-        Convert the context origin configuration to a JSON-serializable dictionary.
-        
-        Returns:
-            A dictionary representing the context origin configuration.
-        """
-        result = asdict(self)
-        # Remove keys with None values for cleaner JSON output
-        return {k: v for k, v in result.items() if v is not None}
-    
     @staticmethod
     def all():
         '''
@@ -46,23 +34,6 @@ class ContextOriginConfig:
             messages = [{'role':'system', 'content':system_msg}] + messages
         return messages
 
-    @staticmethod
-    def from_json(json_dict: Dict[str, Any]) -> 'ContextOriginConfig':
-        """
-        Create a ContextOriginConfig instance from a JSON dictionary.
-        
-        Args:
-            json_dict: JSON dictionary representing a context origin configuration.
-            
-        Returns:
-            A ContextOriginConfig instance.
-        """
-        return ContextOriginConfig(
-            include_original_system_message=json_dict.get("include_original_system_message", False),
-            messages_to_include=json_dict.get("messages_to_include", -1),
-            custom_system_message=json_dict.get("custom_system_message", None)
-        )
-    
     def create_messages_from(self, messages: List[Dict[str, str]], initial_system_message: Optional[Dict[str, str]] = None) -> Tuple[Optional[str], Optional[str], List[Dict[str, str]]]:
         """
         Creates a new list of conversation messages based on the configured context origin.
@@ -144,7 +115,7 @@ class ContextOriginConfig:
         
         return og_system_message, new_system_message, new_conversation_messages
 
-@dataclass
+@json_dataclass
 class ModelConfig:
     """Represents a model configuration with serialization support."""
     name: str
@@ -153,56 +124,3 @@ class ModelConfig:
     api_key_env: Optional[str] = None
     requirements: Optional[List[Requirement]] = field(default=None)
     context_origin_config: Optional[ContextOriginConfig] = field(default=None)
-    
-    def to_json(self) -> Dict[str, Any]:
-        """
-        Convert the model configuration to a JSON-serializable dictionary.
-        
-        Returns:
-            A dictionary representing the model configuration.
-        """
-        result = {
-            "name": self.name,
-            "provider": self.provider,
-            "provider_model": self.provider_model
-        }
-        if self.api_key_env is not None:
-            result["api_key_env"] = self.api_key_env
-        if self.requirements:
-            result["requirements"] = Requirements.to_json(self.requirements)
-        
-        if self.context_origin_config:
-            result["context_origin_config"] = self.context_origin_config.to_json()
-        return result
-    
-    @staticmethod
-    def from_json(json_dict: Dict[str, Any]) -> 'ModelConfig':
-        """
-        Create a ModelConfig instance from a JSON dictionary.
-        
-        Args:
-            json_dict: JSON dictionary representing a model configuration.
-            
-        Returns:
-            A ModelConfig instance.
-        """
-        
-        requirements = None
-        requires_dict = json_dict.get("requirements", None)
-        if requires_dict:
-            requirements = Requirements.from_json(requires_dict)
-        
-        # Handle context_origin_config, default to standard if not provided in JSON
-        context_origin_config = ContextOriginConfig.default()
-        context_origin_dict = json_dict.get("context_origin_config", None)
-        if context_origin_dict:
-            context_origin_config = ContextOriginConfig.from_json(context_origin_dict)
-            
-        return ModelConfig(
-            name=json_dict.get("name", ""),
-            provider=json_dict.get("provider", ""),
-            provider_model=json_dict.get("provider_model", ""),
-            api_key_env=json_dict.get("api_key_env", None),
-            requirements=requirements,
-            context_origin_config=context_origin_config
-        )

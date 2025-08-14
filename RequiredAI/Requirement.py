@@ -2,16 +2,16 @@
 Core requirements functionality for RequiredAI.
 """
 
-from typing import Any, Callable, Dict, List, Type, TypeVar, ClassVar, Optional, Tuple, get_origin, Set
+from typing import Any, Callable, Dict, List, Type, TypeVar, ClassVar, Optional, Tuple
 from abc import ABC, abstractmethod
-from dataclasses import asdict, fields, dataclass, field
+from .helpers import *
 
 T = TypeVar("T")
 
 # Registry to store requirement types
 _REQUIREMENT_REGISTRY: Dict[str, Type] = {}
 
-@dataclass
+@json_dataclass
 class RequirementResult:
     passed_eval:bool
     evaluation_log:Optional[dict] = field(default=None)
@@ -30,18 +30,18 @@ class RequirementResult:
                 **extra_log_fields
             }
         )
+
+@dataclass
+class web_named:
+    __web_name__: str = field(init=False)
     
-class Requirement(ABC):
+class Requirement(web_named):
     """Base abstract class for all requirements."""
-    
-    # Class variable for web name
-    __web_name__: ClassVar[str]
     
     # Name for the requirement instance
     name: str = ""
     revision_model: Optional[str] = None
     
-    @abstractmethod
     def evaluate(self, messages: List[dict]) -> RequirementResult:
         """
         Evaluate if the requirement is met in the given messages.
@@ -55,7 +55,6 @@ class Requirement(ABC):
         pass
     
     @property
-    @abstractmethod
     def prompt(self) -> str:
         """
         Returns a string explaining how the conversation in the last call to 
@@ -82,22 +81,6 @@ def requirement(name: str) -> Callable[[T], T]:
     return decorator
 
 
-# Custom dict_factory for serialization
-def set_to_list_dict_factory(items):
-    result = {}
-    for key, value in items:
-        if isinstance(value, set):
-            result[key] = list(value)  # Convert set to list for JSON
-        elif isinstance(value, list) and any(hasattr(item, '__dataclass_fields__') for item in value):
-            # Handle nested dataclasses in lists (e.g., nodes, children)
-            result[key] = [
-                asdict(item, dict_factory=set_to_list_dict_factory) if hasattr(item, '__dataclass_fields__') else item
-                for item in value
-            ]
-        else:
-            result[key] = value
-    return result
-
 class Requirements:
     """Utility class for handling requirements."""
     
@@ -117,9 +100,8 @@ class Requirements:
             if not requirement_type:
                 raise ValueError(f"Requirement class {req.__class__.__name__} is not registered")
             
-            # Use asdict with custom dict_factory to handle sets
-            result = asdict(req, dict_factory=set_to_list_dict_factory)
-            result["type"] = requirement_type
+            # Use dataclass asdict to get all fields
+            result = req.to_dict()
                     
             return result
         
@@ -139,36 +121,17 @@ class Requirements:
             An instance of the appropriate requirement class
         """
         def _from_json_single(json_dict: dict) -> Requirement:
-            requirement_type = json_dict.get("type")
+            requirement_type = json_dict.get("__web_name__", None)
             if not requirement_type:
-                raise ValueError("Requirement JSON must include a 'type' field")
+                raise ValueError("Requirement JSON must include a '__web_name__' field")
                 
             if requirement_type not in _REQUIREMENT_REGISTRY:
                 raise ValueError(f"Unknown requirement type: {requirement_type}")
-                
+            
             # Create an instance of the requirement class
             requirement_class = _REQUIREMENT_REGISTRY[requirement_type]
             
-            # Get valid field names for this dataclass
-            valid_fields = {f.name: f for f in fields(requirement_class)}
-            
-            # Convert fields based on their type annotations
-            kwargs = {}
-            for k, v in json_dict.items():
-                if k == "type" or k not in valid_fields:
-                    continue
-                field_type = valid_fields[k].type
-                origin_type = get_origin(field_type) or field_type
-                
-                if origin_type in (set, Set) and isinstance(v, list):
-                    kwargs[k] = set(v)  # Convert list back to set
-                elif k in ("nodes", "children") and isinstance(v, list):
-                    # Recursively convert nested dataclasses
-                    kwargs[k] = [Requirements.from_json(item) if isinstance(item, dict) else item for item in v]
-                else:
-                    kwargs[k] = v
-            
-            return requirement_class(**kwargs)
+            return requirement_class.from_dict(json_dict)
         
         if isinstance(j, List):
             return [_from_json_single(json_dict) for json_dict in j]
