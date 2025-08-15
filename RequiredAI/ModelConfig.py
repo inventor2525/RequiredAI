@@ -1,6 +1,7 @@
 from typing import List, Dict, Any, Optional, Tuple, Union
 from .Requirement import Requirements, Requirement
 from .helpers import *
+import os
 
 @json_dataclass
 class ContextOriginConfig:
@@ -124,3 +125,9 @@ class ModelConfig:
     api_key_env: Optional[str] = None
     requirements: Optional[List[Requirement]] = field(default=None)
     context_origin_config: Optional[ContextOriginConfig] = field(default=None)
+    
+    def get_api_key(self, default_env_var:Optional[str]=None) -> Optional[str]:
+        env_var = self.api_key_env or default_env_var
+        if env_var:
+            return os.environ.get(env_var)
+        return None

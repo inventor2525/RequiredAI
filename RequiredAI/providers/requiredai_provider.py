@@ -3,16 +3,15 @@ from typing import Dict, List, Any, Optional
 from ..system import RequiredAISystem
 from ..Requirement import Requirements
 from . import BaseModelProvider, provider
+from ..ModelConfig import ModelConfig
 
 @provider('RequiredAI')
 class RequiredAIProvider(BaseModelProvider):
 	"""Provider for RequiredAI's system."""
 	
-	def __init__(self, config: Dict[str, Any]):
+	def __init__(self, config: ModelConfig):
 		"""Initialize the RequiredAI provider."""
 		super().__init__(config)
-		self.model_name:str = config["provider_model"]
-		self.requirements:list = config["requirements"]
 		
 	def complete(self, messages: List[Dict[str, Any]], params: Dict[str, Any]) -> Dict[str, Any]:
 		"""
@@ -26,4 +25,4 @@ class RequiredAIProvider(BaseModelProvider):
 			The model's response message
 		"""
 		
-		return RequiredAISystem.singleton.chat_completions(self.model_name, self.requirements, messages, params)
+		return RequiredAISystem.singleton.chat_completions(self.config.provider_model, self.config.requirements, messages, params)

@@ -4,6 +4,7 @@ Model manager for RequiredAI.
 
 from typing import Dict, Any, List, Optional
 from .providers import BaseModelProvider
+from .ModelConfig import ModelConfig
 
 class ModelManager:
     """Manager for model providers."""
@@ -15,31 +16,16 @@ class ModelManager:
         """Get the singleton instance of ModelManager."""
         return ModelManager._instance
     
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, model_configs: List[ModelConfig]):
         """
         Initialize the model manager.
         
         Args:
             config: The server configuration
         """
-        self.config = config
-        self.models_config = config.get("models", {})
+        self.model_configs = {config.name:config for config in model_configs}
         self.provider_instances = {}
         ModelManager._instance = self
-    
-    def get_model_config(self, model_name: str) -> Dict[str, Any]:
-        """
-        Get the configuration for a specific model.
-        
-        Args:
-            model_name: The name of the model
-            
-        Returns:
-            The model configuration
-        """
-        if model_name not in self.models_config:
-            raise ValueError(f"Model {model_name} not configured")
-        return self.models_config[model_name]
     
     def get_provider(self, model_name: str) -> BaseModelProvider:
         """
@@ -54,13 +40,16 @@ class ModelManager:
         if model_name in self.provider_instances:
             return self.provider_instances[model_name]
         
-        model_config = self.get_model_config(model_name)
-        provider_name = model_config.get("provider")
+        model_config = self.model_configs.get(model_name,None)
+        if not model_config:
+            raise ValueError(f"The provided model '{model_name}' is not listed in the configuration!")
         
-        if not provider_name:
+        if not model_config.provider:
             raise ValueError(f"Provider not specified for model {model_name}")
         
-        provider = BaseModelProvider.create_provider(provider_name, model_config)
+        provider_class = BaseModelProvider.get_provider(model_config.provider)
+        provider = provider_class(model_config)
+        
         self.provider_instances[model_name] = provider
         return provider
     

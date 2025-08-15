@@ -6,18 +6,19 @@ import os
 from typing import Dict, List, Any, Optional
 import anthropic
 
+from ..ModelConfig import ModelConfig
 from . import BaseModelProvider, provider
 
 @provider('anthropic')
 class AnthropicProvider(BaseModelProvider):
     """Provider for Anthropic's Claude API."""
     
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: ModelConfig):
         """Initialize the Anthropic provider."""
         super().__init__(config)
-        api_key = os.environ.get(config.get("api_key_env", "ANTHROPIC_API_KEY"))
+        api_key = config.get_api_key("ANTHROPIC_API_KEY")
         if not api_key:
-            raise ValueError(f"API key environment variable {config.get('api_key_env')} not set")
+            raise ValueError(f"API key for Anthropic model named '{config.name}' not set!")
         self.client = anthropic.Anthropic(api_key=api_key)
     
     def complete(self, messages: List[Dict[str, Any]], params: Dict[str, Any]) -> Dict[str, Any]:
@@ -32,7 +33,7 @@ class AnthropicProvider(BaseModelProvider):
             The model's response message
         """
         # Extract parameters
-        provider_model = self.config["provider_model"]
+        provider_model = self.config.provider_model
         max_tokens = params.get("max_tokens", 1024)
         temperature = params.get("temperature", 0.7)
         

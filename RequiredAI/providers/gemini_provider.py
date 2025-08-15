@@ -3,6 +3,7 @@ import uuid
 import time
 from typing import Dict, List, Any, Optional
 import google.generativeai as genai
+from ..ModelConfig import ModelConfig
 
 from . import BaseModelProvider, provider
 
@@ -10,17 +11,17 @@ from . import BaseModelProvider, provider
 class GeminiProvider(BaseModelProvider):
     """Provider for Google Gemini API."""
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: ModelConfig):
         """
         Initialize the Gemini provider.
         
         Args:
-            config: Configuration dictionary for the model.
+            config: Configuration for the model.
         """
         super().__init__(config)
-        api_key = os.environ.get(config.get("api_key_env", "GEMINI_API_KEY"))
+        api_key = config.get_api_key("GEMINI_API_KEY")
         if not api_key:
-            raise ValueError(f"API key environment variable {config.get('api_key_env', 'GEMINI_API_KEY')} not set for Gemini provider")
+            raise ValueError(f"API key for Gemini model named '{config.name}' not set!")
         genai.configure(api_key=api_key)
 
     def complete(self, messages: List[Dict[str, Any]], params: Dict[str, Any]) -> Dict[str, Any]:
@@ -35,7 +36,7 @@ class GeminiProvider(BaseModelProvider):
             The model's response message in OpenAI-like dictionary format.
         """
         # Extract parameters
-        provider_model_name = self.config["provider_model"]
+        provider_model_name = self.config.provider_model
         max_tokens = params.get("max_tokens", 1024)
         temperature = params.get("temperature", 0.7)
 

@@ -153,7 +153,7 @@ class WrittenRequirement(Requirement):
         last_message = messages[-1]
         text_to_evaluate = last_message.get("content", "")
         
-        context_config:ContextOriginConfig = getattr(evaluation_model, "context_origin_config", None)
+        context_config = evaluation_model.config.context_origin_config
         extra_context:str = None
         extra_system_msg:str = None
         if context_config:

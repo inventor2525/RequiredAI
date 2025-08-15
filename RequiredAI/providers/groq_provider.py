@@ -5,6 +5,7 @@ Groq provider for RequiredAI.
 import os
 from typing import Dict, List, Any, Optional
 from groq import Groq
+from ..ModelConfig import ModelConfig
 
 from . import BaseModelProvider, provider
 
@@ -12,12 +13,12 @@ from . import BaseModelProvider, provider
 class GroqProvider(BaseModelProvider):
     """Provider for Groq's API."""
     
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: ModelConfig):
         """Initialize the Groq provider."""
         super().__init__(config)
-        api_key = os.environ.get(config.get("api_key_env", "GROQ_API_KEY"))
+        api_key = config.get_api_key("GROQ_API_KEY")
         if not api_key:
-            raise ValueError(f"API key environment variable {config.get('api_key_env', 'GROQ_API_KEY')} not set")
+            raise ValueError(f"API key for Groq model named '{config.name}' not set!")
         self.client = Groq(api_key=api_key)
     
     def complete(self, messages: List[Dict[str, Any]], params: Dict[str, Any]) -> Dict[str, Any]:
@@ -32,7 +33,7 @@ class GroqProvider(BaseModelProvider):
             The model's response message
         """
         # Extract parameters
-        provider_model = self.config["provider_model"]
+        provider_model = self.config.provider_model
         max_tokens = params.get("max_tokens", 1024)
         temperature = params.get("temperature", 0.7)
         

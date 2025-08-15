@@ -9,6 +9,7 @@ from flask import Flask, request, jsonify
 from .Requirement import *
 from .RequirementTypes import *
 from .ModelManager import ModelManager
+from .ModelConfig import ModelConfig
 from .system import RequiredAISystem
 
 # Import providers to register them
@@ -29,7 +30,13 @@ class RequiredAIServer:
         """
         self.app = Flask(__name__)
         self.config_path = config_path
-        self.config = RequiredAISystem.load_config(self.config_path)
+        try:
+            with open(config_path, 'r') as f:
+                self.config = json.load(f)
+            if "models" not in self.config:
+                self.config["models"] = []
+        except:
+            self.config = {"models":[]}
         self.system = RequiredAISystem(self.config)
         
         self._setup_routes()
@@ -69,13 +76,15 @@ class RequiredAIServer:
                 
                 # Update ModelManager's configuration
                 model_manager = ModelManager.singleton()
-                model_manager.models_config[model_name] = data
+                model_manager.model_configs[model_name] = ModelConfig.from_dict(data)
                 # Clear any existing provider instance to force reinitialization
                 model_manager.provider_instances.pop(model_name, None)
                 
+                self.config["models"].append(data)
+                
                 # Save updated configuration to disk
                 with open(self.config_path, 'w') as f:
-                    json.dump(self.config, f, indent=2)
+                    json.dump(self.config, f, indent=4)
                 
                 return jsonify({"message": f"Model {model_name} added or updated successfully"})
             except Exception as e:

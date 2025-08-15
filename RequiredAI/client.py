@@ -4,6 +4,7 @@ Client API for RequiredAI.
 
 from typing import List, Dict, Any, Optional
 from .ModelConfig import ModelConfig
+from Requirement import Requirement
 import requests
 import json
 
@@ -24,7 +25,7 @@ class RequiredAIClient:
         self,
         model: str,
         messages: List[Dict[str, Any]],
-        requirements: List[Dict[str, Any]]=[],
+        requirements: List[Requirement]=[],
         **kwargs
     ) -> Dict[str, Any]:
         """
@@ -34,6 +35,8 @@ class RequiredAIClient:
             model: The model to use for the completion
             messages: The conversation messages
             requirements: The requirements to apply to the response
+                (These will be in addition to any the model has built
+                in and will take priority over them)
             **kwargs: Additional parameters to pass to the API
             
         Returns:
@@ -44,7 +47,7 @@ class RequiredAIClient:
         payload = {
             "model": model,
             "messages": messages,
-            "requirements": requirements,
+            "requirements": requirements.to_dict(),
             **kwargs
         }
         
