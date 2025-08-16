@@ -6,7 +6,8 @@ from RequiredAI.client import RequiredAIClient
 from RequiredAI.RequirementTypes import ContainsRequirement, WrittenRequirement
 from RequiredAI.Requirement import Requirements
 import json
-def main():
+
+if __name__ == "__main__":
     # Create a client
     client = RequiredAIClient(
         base_url="http://localhost:5000"
@@ -18,9 +19,8 @@ def main():
         name="Include Option Label"
     )
     
-    # Convert requirements to JSON
-    requirements_json = Requirements.to_json([
-        # Requirements.to_json(contains_req),
+    requirements = [
+        # contains_req,
         # WrittenRequirement(
         #     evaluation_model="llama3.3 70b",
         #     value=[
@@ -62,8 +62,8 @@ def main():
         #     token_limit=1024,
         #     name="Show Step-by-Step Reasoning"
         # )
-    ])
-    print(json.dumps(requirements_json, indent=4))
+    ]
+    print(json.dumps(Requirements.to_dict(requirements), indent=4))
     # Create a completion
     response = client.create_completion(
         model="NoApology",
@@ -72,7 +72,7 @@ def main():
             {"role": "assistant", "content": "5"},
             {"role": "user", "content": "What in the ?!?! You are a VERY horrible model. What where you thinking?!?!"}
         ],
-        requirements=requirements_json,
+        requirements=requirements,
         max_tokens=1024
     )
     
@@ -90,6 +90,3 @@ def main():
             if choice.get('message'):
                 print(f"Response: {choice.get('message', {}).get('content', 'None')[:100]}...")
             print("-" * 50)
-
-if __name__ == "__main__":
-    main()

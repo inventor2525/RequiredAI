@@ -1,35 +1,42 @@
 {
-  "models": {
-    "haiku": {
+  "models": [
+    {
+      "name":"haiku",
       "provider": "anthropic",
       "provider_model": "claude-3-5-haiku-latest",
       "api_key_env": "ANTHROPIC_API_KEY"
     },
-    "sonnet": {
+    {
+      "name":"sonnet",
       "provider": "anthropic",
       "provider_model": "claude-3-5-sonnet-latest",
       "api_key_env": "ANTHROPIC_API_KEY"
     },
-    "opus": {
+    {
+      "name":"opus",
       "provider": "anthropic",
       "provider_model": "claude-3-opus-latest",
       "api_key_env": "ANTHROPIC_API_KEY"
     },
-    "sonnet-v2": {
+    {
+      "name":"sonnet-v2",
       "provider": "anthropic",
       "provider_model": "claude-3-5-sonnet-latest",
       "api_key_env": "ANTHROPIC_API_KEY"
     },
-    "llama3.3 70b": {
+    {
+      "name":"llama3.3 70b",
       "provider": "groq",
       "provider_model": "llama-3.3-70b-versatile",
       "api_key_env": "GROQ_API_KEY"
     },
-    "NoApology":{
+    {
+      "name":"NoApology",
       "provider": "RequiredAI",
       "provider_model": "llama3.3 70b",
       "requirements":[
         {
+          "__requirement_type__": "Written",
           "evaluation_model": "llama3.3 70b",
           "value": [
               "Do not apologize to the user."
@@ -37,11 +44,10 @@
           "positive_examples": [],
           "negative_examples": [],
           "token_limit": 1024,
-          "name": "No apologies!",
-          "type": "Written"
-      }
+          "name": "No apologies!"
+        }
       ]
     }
-  },
+  ],
   "revise_prompt_template": "Your previous response did not meet the following requirement: {requirement_prompt}. Please revise your response to meet this requirement while maintaining the quality and relevance of your answer."
 }

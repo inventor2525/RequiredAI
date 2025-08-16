@@ -116,6 +116,8 @@ class ContextOriginConfig:
         
         return og_system_message, new_system_message, new_conversation_messages
 
+from dataclasses_json import config
+
 @json_dataclass
 class ModelConfig:
     """Represents a model configuration with serialization support."""
@@ -123,7 +125,10 @@ class ModelConfig:
     provider: str
     provider_model: str
     api_key_env: Optional[str] = None
-    requirements: Optional[List[Requirement]] = field(default=None)
+    requirements: Optional[List[Requirement]] = field(default=None, metadata=config(
+			decoder=Requirements.from_dict, encoder=Requirements.to_dict
+		)
+    ) # This handles the polymorphism of Requirement
     context_origin_config: Optional[ContextOriginConfig] = field(default=None)
     
     def get_api_key(self, default_env_var:Optional[str]=None) -> Optional[str]:
@@ -131,3 +136,19 @@ class ModelConfig:
         if env_var:
             return os.environ.get(env_var)
         return None
+
+class ModelConfigs:
+    """
+    Handles serialization and deserialization of n ModelConfig objects.
+    """
+    @staticmethod
+    def to_dict(configs: Union[ModelConfig, List[ModelConfig]]) -> Dict[str, Any] | List[Dict[str, Any]]:
+        if isinstance(configs, list):
+            return [config.to_dict() for config in configs]
+        return configs.to_dict()
+    
+    @staticmethod
+    def from_dict(config_dicts: Dict[str, Any] | List[Dict[str, Any]]) -> ModelConfig | List[ModelConfig]:
+        if isinstance(config_dicts, list):
+            return [ModelConfig.from_dict(config_dict) for config_dict in config_dicts]
+        return ModelConfig.from_dict(config_dicts)

@@ -50,7 +50,7 @@ class RequiredAIServer:
             
             # Extract parameters
             model_name = data.get("model")
-            requirements = data.get("requirements", [])
+            requirements = Requirements.from_dict(data.get("requirements", []))
             messages = data.get("messages", [])
             params = {k: v for k, v in data.items() if k not in set(["model", "requirements", "messages"])}
             

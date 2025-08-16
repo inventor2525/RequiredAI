@@ -24,7 +24,7 @@ class RequirementResult:
         return RequirementResult(
             passed_eval=passed,
             evaluation_log={
-                "requirement_type": type(requirement).__web_name__,
+                "requirement_type": type(requirement).__requirement_type__,
                 "requirement_name": requirement.name,
                 "passed":passed,
                 **extra_log_fields
@@ -32,10 +32,10 @@ class RequirementResult:
         )
 
 @dataclass
-class web_named:
-    __web_name__: str = field(init=False)
+class typed_requirement:
+    __requirement_type__: str = field(init=False)
     
-class Requirement(web_named):
+class Requirement(typed_requirement):
     """Base abstract class for all requirements."""
     
     # Name for the requirement instance
@@ -74,8 +74,29 @@ def requirement(name: str) -> Callable[[T], T]:
         The decorated class
     """
     def decorator(cls: T) -> T:
-        # Set the __web_name__ class variable
-        cls.__web_name__ = name
+        # Set the __requirement_type__ class variable
+        cls.__requirement_type__ = name
         _REQUIREMENT_REGISTRY[name] = cls
         return cls
     return decorator
+
+ReqDict = Dict[str, Any]
+class Requirements:
+    '''
+    Handles the polymorphic serialization and
+    deserialization of requirement objects.
+    '''
+    @staticmethod
+    def to_dict(requirements:Requirement|List[Requirement]) -> ReqDict|List[ReqDict]:
+        if isinstance(requirements, list):
+            return [req.to_dict() for req in requirements]
+        return requirements.to_dict()
+    
+    @staticmethod
+    def from_dict(requirement_dicts:ReqDict|List[ReqDict]) -> Requirement|List[Requirement]:
+        def inner(req_dict:ReqDict) -> Requirement:
+            requirement_cls = _REQUIREMENT_REGISTRY[req_dict['__requirement_type__']]
+            return requirement_cls.from_dict(req_dict)
+        if isinstance(requirement_dicts, list):
+            return [inner(req_dict) for req_dict in requirement_dicts]
+        return inner(requirement_dicts)

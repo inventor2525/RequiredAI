@@ -36,7 +36,7 @@ class Requirements:
     
 T = TypeVar("T")
 def requirement(name:str) -> Callable[[T],T]:
-    '''Registers the requirement in a static list of requirements held in Requirements class and stores the passed name in the decorated requirement class as __web_name__.'''
+    '''Registers the requirement in a static list of requirements held in Requirements class and stores the passed name in the decorated requirement class as __requirement_type__.'''
 ```
 
 Notice how every requirement type has an evalute function.

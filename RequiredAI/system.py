@@ -1,7 +1,7 @@
 from typing import List, Dict, Any, Optional, ClassVar, Tuple
 import json
 from .Requirement import Requirements, Requirement, RequirementResult
-from .ModelConfig import ContextOriginConfig
+from .ModelConfig import ContextOriginConfig, ModelConfigs
 from .ModelManager import ModelManager
 from .helpers import *
 
@@ -21,7 +21,7 @@ class RequiredAISystem:
 			"Your previous response did not meet the following requirement: {requirement_prompt}. "
 			"Please revise your response to meet this requirement.")
 		
-		ModelManager(self.config["models"])
+		ModelManager(ModelConfigs.from_dict(self.config["models"]))
 		RequiredAISystem.singleton = self
 	
 	def chat_completions(self, model_name:str, requirements:List[Requirement], messages:List[dict], params:dict) -> dict:

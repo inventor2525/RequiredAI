@@ -4,7 +4,7 @@ Client API for RequiredAI.
 
 from typing import List, Dict, Any, Optional
 from .ModelConfig import ModelConfig
-from Requirement import Requirement
+from .Requirement import Requirement, Requirements
 import requests
 import json
 
@@ -47,7 +47,7 @@ class RequiredAIClient:
         payload = {
             "model": model,
             "messages": messages,
-            "requirements": requirements.to_dict(),
+            "requirements": Requirements.to_dict(requirements),
             **kwargs
         }
         
