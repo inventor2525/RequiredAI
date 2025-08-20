@@ -88,6 +88,8 @@ class Requirements:
     '''
     @staticmethod
     def to_dict(requirements:Requirement|List[Requirement]) -> ReqDict|List[ReqDict]:
+        if requirements is None:
+            return None
         if isinstance(requirements, list):
             return [req.to_dict() for req in requirements]
         return requirements.to_dict()

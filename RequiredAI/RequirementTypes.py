@@ -261,13 +261,17 @@ class WrittenRequirement(Requirement):
             eval_args = {
                 "model_name":self.evaluation_model,
                 "messages":eval_messages,
-                "params":{"max_tokens": 1, "temperature": 0.0}  # Use low temperature for consistent results
+                "params":{"max_tokens": 1024, "temperature": 0.0}  # Use low temperature for consistent results
             }
             response = ModelManager.singleton().complete_with_model(**eval_args)
             
             # Parse the response
             eval_text = get_msg_content(response).strip().lower()
-            result = "yes" in eval_text and "no" not in eval_text
+            def extract_text(txt):
+                if "</think>" not in txt:
+                    return txt
+                return txt.split("</think>", 1)[1]
+            result = "yes" in eval_text and "no" not in extract_text(eval_text)
             
             return RequirementResult.construct(self, result, {
                 "evaluation":eval_args,
