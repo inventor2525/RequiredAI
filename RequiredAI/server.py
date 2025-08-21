@@ -80,7 +80,16 @@ class RequiredAIServer:
                 # Clear any existing provider instance to force reinitialization
                 model_manager.provider_instances.pop(model_name, None)
                 
-                self.config["models"].append(data)
+                index_found = None
+                for model_indx, model_config in enumerate(self.config["models"]):
+                    if model_config.get('name', None) == data['name']:
+                        index_found = model_indx
+                        break
+                    
+                if index_found is None:
+                    self.config["models"].append(data)
+                else:
+                    self.config["models"][index_found] = data
                 
                 # Save updated configuration to disk
                 with open(self.config_path, 'w') as f:
