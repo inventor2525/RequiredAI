@@ -155,11 +155,8 @@ class WrittenRequirement(Requirement):
         
         context_config = evaluation_model.config.context_origin_config
         extra_context:str = None
-        extra_system_msg:str = None
         if context_config:
-            og_system_msg, extra_system_msg, context_messages = context_config.create_messages_from(messages)
-            if og_system_msg:
-                context_messages = [{'role':'system', 'content':og_system_msg}] + context_messages
+            context_messages = ContextOriginConfig.select_with(messages, evaluation_model.config.context_origin_config)
             
             msg_xmls = []
             worth_including = False
@@ -191,8 +188,6 @@ class WrittenRequirement(Requirement):
             def construct_msgs(requirement:str, positive_examples:List[str], negative_examples:List[str], extra_context:str) -> Tuple[str, str]:
                 # System Message Construction:
                 system_msg = "# Goal\n\nDetermine if the given text meets the following written requirement. Answer with only 'yes' or 'no'."
-                if extra_system_msg:
-                    system_msg += " (Unless told to do more under 'Additionally'.)"
                 system_msg += "\n\n> Note, for clarity: All requirement, example, and content text given to you are wrapped in markdown code blocks like this '```txt\\n{text}\\n```'."
                 system_msg += f"\n\n# Written Requirement:\n{code_block_text(requirement)}"
                 
@@ -203,11 +198,6 @@ class WrittenRequirement(Requirement):
                     system_msg += f"\n\n# Examples that do *NOT* meet the requirement:\n" + examples_to_str(negative_examples, "Bad")
                 if positive_examples:
                     system_msg += "\n\n# Examples that *DO* meet the requirement:\n" + examples_to_str(positive_examples, "Good")
-                
-                if extra_system_msg:
-                    system_msg += "\n\n# Additionally\nIn this case, the application would also like to tell you:\n"
-                    system_msg += code_block_text(extra_system_msg)
-                    system_msg += "\nPlease follow any additional instructions that it may have given you there as well."
                 
                 # User Message Construction:
                 user_msg = ""

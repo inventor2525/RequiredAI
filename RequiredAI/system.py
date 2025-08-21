@@ -84,12 +84,7 @@ class RequiredAISystem:
 			#get from chat using 'revision_model''s  context_origin_config.   default context_origin_config to a new function that returns a config for 'all' (un-touched messages)
 			
 			revision_model = ModelManager.singleton().get_provider(corrector_model_name)
-			revision_context_config = revision_model.config.context_origin_config
-			if revision_context_config:
-				context = ContextOriginConfig.append_system_messages_to(
-					*revision_context_config.create_messages_from(chat)
-				)
-				conversation = context + [get_msg(prospective_response)]
+			conversation = ContextOriginConfig.select_with(chat, revision_model.config.context_origin_config) + [get_msg(prospective_response)]
 			
 			# Get a new response using ModelManager
 			revision_conversation = conversation + [revision_prompt]
