@@ -108,7 +108,8 @@ class GeminiProvider(BaseModelProvider):
                             "content": content_text
                         },
                         "finish_reason": finish_reason
-                    }]
+                    }],
+                    "tags": list(self.config.output_tags)
                 }
             else:
                 # Handle cases where no candidates are returned (e.g., safety block)

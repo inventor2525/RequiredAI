@@ -58,7 +58,9 @@ class GroqProvider(BaseModelProvider):
         # Make the API call
         try:
             response = self.client.chat.completions.create(**request_params)
-            return response.dict()
+            response_dict = response.dict()
+            response_dict['tags'] = list(self.config.output_tags)
+            return response_dict
         except Exception as e:
             print(f"Error calling Groq API: {str(e)}")
             raise

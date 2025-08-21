@@ -74,7 +74,9 @@ class AnthropicProvider(BaseModelProvider):
         # Make the API call
         try:
             response = self.client.messages.create(**request_params)
-            return response.dict()
+            response_dict = response.dict()
+            response_dict['tags'] = list(self.config.output_tags)
+            return response_dict
         except Exception as e:
             print(f"Error calling Anthropic API: {str(e)}")
             raise

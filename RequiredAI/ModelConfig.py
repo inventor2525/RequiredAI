@@ -11,7 +11,8 @@ class ContextOriginConfig:
     include_original_system_message: bool = False
     messages_to_include: Optional[Union[int, Tuple[int, int], List[Union[int, Tuple[int, int]]]]] = -1
     custom_system_message: Optional[str] = None
-
+    filter_tags: List[str] | Dict[str, bool] = field(default_factory=dict)
+    
     @staticmethod
     def all():
         '''
@@ -58,6 +59,42 @@ class ContextOriginConfig:
             Optionally the old and the new system message (or none for either where not applicable)
             followed by a new message list containing the configured excerpt of messages.
         """
+        if self.filter_tags:
+            filter_tags = self.filter_tags
+            if isinstance(filter_tags, list):
+                filter_tags = {tag:True for tag in filter_tags}
+            some_tags_include = any(filter_tags.values())
+            all_tags_include = all(filter_tags.values())
+            tag_filtered_messages = []
+            for message in messages:
+                # figure out if to include the message based on how tags are configured:
+                tags = message.get('tags',[])
+                if all_tags_include:
+                    include_msg = False
+                    for tag in tags:
+                        if tag in filter_tags:
+                            include_msg = True
+                            break
+                elif some_tags_include:
+                    include_msg = False
+                    for tag in tags:
+                        tag_val = filter_tags.get(tag, None)
+                        if tag_val:
+                            include_msg = True
+                        if tag_val == False:
+                            include_msg = False
+                            break
+                else:
+                    for tag in tags:
+                        tag_val = filter_tags.get(tag, True)
+                        if not tag_val:
+                            include_msg = False
+                            break
+                
+                if include_msg:
+                    tag_filtered_messages.append(message)
+            messages = tag_filtered_messages
+        
         og_system_message:str = None
         new_system_message:str = None
         new_conversation_messages: List[Dict[str, str]] = []
@@ -130,6 +167,7 @@ class ModelConfig:
 		)
     ) # This handles the polymorphism of Requirement
     context_origin_config: Optional[ContextOriginConfig] = field(default=None)
+    output_tags: List[str] = field(default_factory=list)
     
     def get_api_key(self, default_env_var:Optional[str]=None) -> Optional[str]:
         env_var = self.api_key_env or default_env_var
