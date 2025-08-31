@@ -1,6 +1,4 @@
 from dataclasses import dataclass, Field, field
-
-
 from dataclasses_json import dataclass_json, config
 from typing import List, Dict, Any, Type, TypeVar, Generic, Callable, ClassVar, Optional
 from typing import get_origin, get_args, Annotated, ForwardRef, overload, Iterator
@@ -10,11 +8,11 @@ import uuid
 T = TypeVar('T')
 K = TypeVar('K')
 V = TypeVar('V')
-
 _RefByIDType = TypeVar('_RefByIDType')
+
 ReferenceByID = Annotated[_RefByIDType, "Reference By ID"]
 MISSING = object()
-#TODO: continue checking if id_type and object_type are used
+
 class ObjectID:
 	info_field_name = '__id_info__'
 	by_id_field_name = '__by_id__'
@@ -118,7 +116,7 @@ class ObjectID:
 	def generate_increment_id(self) -> str:
 		id = getattr(self, 'current_increment_id', 0)
 		self.current_increment_id = id+1
-		return f"{self.cls.__name__}_{id}" #TODO: handle id types that are not just strings
+		return f"{self.cls.__name__}_{id}"
 	
 	@staticmethod
 	def get_id_info(cls:Any) -> 'ObjectID':
@@ -172,7 +170,12 @@ class ObjectID:
 	def __bool__(self) -> bool:
 		return self.type != ObjectID.Type.NONE
 
-class thing(Generic[T]):
+class _JSON_DataclassMixin(Generic[T]):
+	'''
+	Used to type hind dataclass_json methods.
+	
+	This is not used at runtime, and you will never get an actual instance of this.
+	'''
 	def to_dict(self) -> Dict[str, Any]:
 		pass
 	def to_json(self,indent:int) -> str:
@@ -185,13 +188,13 @@ class thing(Generic[T]):
 		pass
 
 @overload
-def json_dataclass(has_id:bool=False, auto_id_name:str='__id__', user_id_name:str=None) -> Callable[[Type[T]], Type[T] | Type[thing[T]]]:
+def json_dataclass(has_id:bool=False, auto_id_name:str='__id__', user_id_name:str=None) -> Callable[[Type[T]], Type[T] | Type[_JSON_DataclassMixin[T]]]:
 	pass
 
 @overload
-def json_dataclass(_cls: Type[T], has_id:bool=False, auto_id_name:str='__id__', user_id_name:str=None) -> Type[T] | Type[thing[T]]:
+def json_dataclass(_cls: Type[T], has_id:bool=False, auto_id_name:str='__id__', user_id_name:str=None) -> Type[T] | Type[_JSON_DataclassMixin[T]]:
 	pass
-def json_dataclass(*args, **kwargs) -> Callable[[Type[T]], Type[T] | Type[thing[T]]] | Type[T] | Type[thing[T]]:
+def json_dataclass(*args, **kwargs) -> Callable[[Type[T]], Type[T] | Type[_JSON_DataclassMixin[T]]] | Type[T] | Type[_JSON_DataclassMixin[T]]:
 	def wrap(cls:Type[T]) -> Type[T]:
 		return _process_class(cls, *args, **kwargs)
 	
@@ -201,7 +204,7 @@ def json_dataclass(*args, **kwargs) -> Callable[[Type[T]], Type[T] | Type[thing[
 	# if not, we'll assume _cls is an arg and return a decorator that will treat it like one:
 	return wrap
 
-def _process_class(cls: Type[T], has_id:bool=False, auto_id_name:str='__id__', user_id_name:str=None) -> Type[T] | Type[thing[T]]:
+def _process_class(cls: Type[T], has_id:bool=False, auto_id_name:str='__id__', user_id_name:str=None) -> Type[T] | Type[_JSON_DataclassMixin[T]]:
 	obj_id = ObjectID(cls, has_id, auto_id_name, user_id_name)
 	obj_id.setup()
 	
@@ -256,7 +259,6 @@ def _process_class(cls: Type[T], has_id:bool=False, auto_id_name:str='__id__', u
 					setattr(cls, new_field_name, field_default)
 				else:
 					setattr(cls, new_field_name, field(default=field_default, metadata=config(field_name=field_name)))
-				# TODO: lists and dicts props with instrumented collections
 				
 				# Replace the field with a property:
 				if get_origin(field_type) == None:
@@ -320,65 +322,66 @@ def _process_class(cls: Type[T], has_id:bool=False, auto_id_name:str='__id__', u
 
 	return cls
 
-@json_dataclass(has_id=True)
-class node:
-	my_val:str
-	prev:ReferenceByID['node'] = field(default=None)
-	next:ReferenceByID['node'] = None
-	
-	def add(self, new:'node'):
-		self.next = new
-		new.prev = self
+if __name__ == "__main__":
+	@json_dataclass(has_id=True)
+	class node:
+		my_val:str
+		prev:ReferenceByID['node'] = field(default=None)
+		next:ReferenceByID['node'] = None
+		
+		def add(self, new:'node'):
+			self.next = new
+			new.prev = self
 
-@json_dataclass(has_id=True)
-class holder:
-	my_val:str
-	all_nodes:List[node] = field(default_factory=list)
-	ref_nodes:ReferenceByID[List[node]] = field(default_factory=list)
-	ref_nodes_map:ReferenceByID[Dict[str, node]] = field(default_factory=dict)
-	other:ReferenceByID['holder'] = None
-	
-	def add(self, node:node):
-		if len(self.all_nodes)>0:
-			self.all_nodes[-1].add(node)
-		self.all_nodes.append(node)
-		self.ref_nodes.append(node)
-		self.ref_nodes_map[node.my_val] = node
+	@json_dataclass(has_id=True)
+	class holder:
+		my_val:str
+		all_nodes:List[node] = field(default_factory=list)
+		ref_nodes:ReferenceByID[List[node]] = field(default_factory=list)
+		ref_nodes_map:ReferenceByID[Dict[str, node]] = field(default_factory=dict)
+		other:ReferenceByID['holder'] = None
+		
+		def add(self, node:node):
+			if len(self.all_nodes)>0:
+				self.all_nodes[-1].add(node)
+			self.all_nodes.append(node)
+			self.ref_nodes.append(node)
+			self.ref_nodes_map[node.my_val] = node
 
-@json_dataclass
-class holders_holder:
-	holder1:holder
-	holder2:holder
+	@json_dataclass
+	class holders_holder:
+		holder1:holder
+		holder2:holder
 
-import json
-h = holder("Hi")
-h.add(node("person"))
-h.add(node("dog"))
-h.add(node("and"))
-h.add(node("cat"))
-h.all_nodes[-1].add(h.all_nodes[0])
-other = holder("bye")   #TODO: holder by id empty
-h.other = other
-hh = holders_holder(h, h.other)
-hh_dict = hh.to_dict()
-hh2 = holders_holder.from_dict(hh_dict)
-h_dict = hh_dict# h.to_dict()
-h2 = hh2.holder1
+	import json
+	h = holder("Hi")
+	h.add(node("person"))
+	h.add(node("dog"))
+	h.add(node("and"))
+	h.add(node("cat"))
+	h.all_nodes[-1].add(h.all_nodes[0])
+	other = holder("bye")
+	h.other = other
+	hh = holders_holder(h, h.other)
+	hh_dict = hh.to_dict()
+	hh2 = holders_holder.from_dict(hh_dict)
+	h_dict = hh_dict# h.to_dict()
+	h2 = hh2.holder1
 
-print(json.dumps(h_dict, indent=4))
-print(h2)
-print("Bye!")
+	print(json.dumps(h_dict, indent=4))
+	print(h2)
+	print("Bye!")
 
-i = 0
-current:node = h2.all_nodes[0]
-while current and i<10:
-	i+=1
-	print(current.my_val)
-	current = current.next
+	i = 0
+	current:node = h2.all_nodes[0]
+	while current and i<10:
+		i+=1
+		print(current.my_val)
+		current = current.next
 
-node_info = ObjectID.get_id_info(node)
-for a, b, ar, br, arm, brm in zip(h.all_nodes, h2.all_nodes, h.ref_nodes, h2.ref_nodes, h2.ref_nodes_map.keys(), h2.ref_nodes_map.values()):
-	print('------')
-	print(id(a), id(b), " is = ", a==b, " but their ids are: ", node_info.id_for(a), node_info.id_for(b))
-	print(id(ar), id(br), " is = ", ar==br, " but their ids are: ", node_info.id_for(ar), node_info.id_for(br))
-	print(arm, id(brm), node_info.id_for(brm))
+	node_info = ObjectID.get_id_info(node)
+	for a, b, ar, br, arm, brm in zip(h.all_nodes, h2.all_nodes, h.ref_nodes, h2.ref_nodes, h2.ref_nodes_map.keys(), h2.ref_nodes_map.values()):
+		print('------')
+		print(id(a), id(b), " is = ", a==b, " but their ids are: ", node_info.id_for(a), node_info.id_for(b))
+		print(id(ar), id(br), " is = ", ar==br, " but their ids are: ", node_info.id_for(ar), node_info.id_for(br))
+		print(arm, id(brm), node_info.id_for(brm))
