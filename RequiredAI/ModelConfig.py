@@ -1,5 +1,6 @@
 from typing import List, Dict, Any, Optional, Tuple, Union
 from .Requirement import Requirements, Requirement
+from .json_dataclass import *
 from .helpers import *
 import os
 

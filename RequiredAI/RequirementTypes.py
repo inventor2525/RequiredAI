@@ -5,6 +5,7 @@ from typing import List, Optional, Any, Tuple
 import random
 from .helpers import *
 from .Requirement import requirement, Requirement, RequirementResult
+from .json_dataclass import *
 import re
 
 @requirement("Contains")

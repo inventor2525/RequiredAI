@@ -4,6 +4,8 @@ Core requirements functionality for RequiredAI.
 
 from typing import Any, Callable, Dict, List, Type, TypeVar, ClassVar, Optional, Tuple
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from .json_dataclass import *
 from .helpers import *
 
 T = TypeVar("T")

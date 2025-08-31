@@ -1,5 +1,4 @@
 from typing import Dict, List
-from dataclasses import dataclass, field, asdict, fields
 
 def get_id(response :Dict[str,str]) -> str:
     '''
@@ -39,39 +38,3 @@ def code_block_text(text:str, language:str='txt'):
 def indent_text(text:str, indent:str='\t') -> str:
     '''Indent text over with 'indent' str.'''
     return indent + f'\n{indent}'.join(text.split('\n'))
-
-from typing import Type, TypeVar, Any
-
-T = TypeVar('T')
-
-def json_dataclass(cls: Type[T]) -> Type[T]:
-    """
-    A decorator that applies @dataclass, @dataclass_json, and overrides from_json
-    to call __post_init__ after deserialization.
-    """
-    from dataclasses_json import dataclass_json
-    from functools import wraps
-    # Step 1: Apply @dataclass
-    cls = dataclass(cls)
-    
-    # Step 2: Apply @dataclass_json
-    cls = dataclass_json(cls)
-    
-    # Step 3: Store the original from_json method
-    original_from_json = cls.from_json
-    
-    # Step 4: Define a new from_json that calls the original and then __post_init__
-    @classmethod
-    @wraps(original_from_json)
-    def custom_from_json(cls: Type[T], json_data: str, **kwargs: Any) -> T:
-        # Call the original from_json to get the instance
-        instance = original_from_json(json_data, **kwargs)
-        # Call __post_init__ if it exists
-        if hasattr(instance, '__post_init__'):
-            instance.__post_init__()
-        return instance
-    
-    # Step 5: Replace the class's from_json with the custom one
-    cls.from_json = custom_from_json
-    
-    return cls
