@@ -12,7 +12,8 @@ _RefByIDType = TypeVar('_RefByIDType')
 
 ReferenceByID = Annotated[_RefByIDType, "Reference By ID"]
 MISSING = object()
-
+_default_auto_id_name = '__id__'
+_default_use_small_ids = False
 class ObjectID:
 	info_field_name = '__id_info__'
 	by_id_field_name = '__by_id__'
@@ -25,6 +26,10 @@ class ObjectID:
 		USER=1
 		UUID=2
 		INCREMENT=4
+		
+		@staticmethod
+		def IsNotNone(t:'ObjectID.Type') -> bool:
+			return t!=None and t!=MISSING and t!=ObjectID.Type.NONE
 	
 	T = TypeVar('T')
 
@@ -96,18 +101,10 @@ class ObjectID:
 			for value_id in self.backing_field.values():
 				yield value_id if not self._value_id_info else self._value_id_info.get(value_id)
 
-	#TODO: add small id flag to decorator
-	def __init__(self, cls:object_type, has_id:bool=False, auto_id_name:str='__id__', user_id_name:str=None, small_ids:bool=True):
+	def __init__(self, cls:object_type, id_type:'ObjectID.Type', name:str):
 		self.cls = cls
-		if not has_id:
-			self.type = ObjectID.Type.NONE
-			self.name = None
-		elif user_id_name:
-			self.name = user_id_name
-			self.type = ObjectID.Type.USER
-		else:
-			self.name = auto_id_name
-			self.type = ObjectID.Type.INCREMENT if small_ids else ObjectID.Type.UUID
+		self.name = name
+		self.type = id_type
 	
 	@staticmethod
 	def generate_uuid() -> str:
@@ -120,7 +117,7 @@ class ObjectID:
 	
 	@staticmethod
 	def get_id_info(cls:Any) -> 'ObjectID':
-		return getattr(cls, ObjectID.info_field_name, ObjectID(None))
+		return getattr(cls, ObjectID.info_field_name, ObjectID(None, ObjectID.Type.NONE, None))
 	
 	def setup(self):
 		if self:
@@ -188,11 +185,11 @@ class _JSON_DataclassMixin(Generic[T]):
 		pass
 
 @overload
-def json_dataclass(has_id:bool=False, auto_id_name:str='__id__', user_id_name:str=None) -> Callable[[Type[T]], Type[T] | Type[_JSON_DataclassMixin[T]]]:
+def json_dataclass(id_type:ObjectID.Type=MISSING, has_id:bool=MISSING, auto_id_name:str=_default_auto_id_name, user_id_name:str=None) -> Callable[[Type[T]], Type[T] | Type[_JSON_DataclassMixin[T]]]:
 	pass
 
 @overload
-def json_dataclass(_cls: Type[T], has_id:bool=False, auto_id_name:str='__id__', user_id_name:str=None) -> Type[T] | Type[_JSON_DataclassMixin[T]]:
+def json_dataclass(_cls: Type[T]) -> Type[T] | Type[_JSON_DataclassMixin[T]]:
 	pass
 def json_dataclass(*args, **kwargs) -> Callable[[Type[T]], Type[T] | Type[_JSON_DataclassMixin[T]]] | Type[T] | Type[_JSON_DataclassMixin[T]]:
 	def wrap(cls:Type[T]) -> Type[T]:
@@ -204,8 +201,35 @@ def json_dataclass(*args, **kwargs) -> Callable[[Type[T]], Type[T] | Type[_JSON_
 	# if not, we'll assume _cls is an arg and return a decorator that will treat it like one:
 	return wrap
 
-def _process_class(cls: Type[T], has_id:bool=False, auto_id_name:str='__id__', user_id_name:str=None) -> Type[T] | Type[_JSON_DataclassMixin[T]]:
-	obj_id = ObjectID(cls, has_id, auto_id_name, user_id_name)
+def _process_class(cls: Type[T], id_type:ObjectID.Type=MISSING, has_id:bool=MISSING, auto_id_name:str=_default_auto_id_name, user_id_name:str=None, small_id:bool=_default_use_small_ids) -> Type[T] | Type[_JSON_DataclassMixin[T]]:
+	# Figure out if we have an id, and what type we have if so:
+	has_id = (
+		has_id
+		or ObjectID.Type.IsNotNone(id_type)
+		or auto_id_name != _default_auto_id_name
+		or user_id_name
+		or small_id!=_default_use_small_ids
+	)
+	if not has_id:
+		id_type = ObjectID.Type.NONE
+	else:
+		if ObjectID.Type.IsNotNone(id_type):
+			if id_type == ObjectID.Type.UUID:
+				assert auto_id_name, "Auto id field name must be supplied when using UUIDs."
+			elif id_type == ObjectID.Type.INCREMENT:
+				assert auto_id_name, "Auto id field name must be supplied when using INCREMENT ids."
+			elif id_type == ObjectID.Type.USER:
+				assert user_id_name, "User id field name must be supplied when using user supplied id fields."
+			else:
+				raise NotImplemented
+		elif auto_id_name != _default_auto_id_name:
+			id_type = ObjectID.Type.INCREMENT if small_id else ObjectID.Type.UUID
+		elif user_id_name:
+			id_type = ObjectID.Type.USER
+		else:
+			id_type = ObjectID.Type.INCREMENT if small_id else ObjectID.Type.UUID
+	
+	obj_id = ObjectID(cls, id_type, user_id_name if id_type == ObjectID.Type.USER else auto_id_name)
 	obj_id.setup()
 	
 	def replace_dict_item(d: dict, old_key, new_key, new_value) -> dict:
