@@ -14,6 +14,17 @@ ReferenceByID = Annotated[_RefByIDType, "Reference By ID"]
 MISSING = object()
 _default_auto_id_name = '__id__'
 _default_use_small_ids = False
+
+class IDType(Enum):
+	NONE=0
+	USER=1
+	UUID=2
+	INCREMENT=4
+	
+	@staticmethod
+	def IsNotNone(t:'IDType') -> bool:
+		return t!=None and t!=MISSING and t!=IDType.NONE
+
 class ObjectID:
 	info_field_name = '__id_info__'
 	by_id_field_name = '__by_id__'
@@ -21,18 +32,6 @@ class ObjectID:
 	id_type = str|Any
 	object_type = Any
 	
-	class Type(Enum):
-		NONE=0
-		USER=1
-		UUID=2
-		INCREMENT=4
-		
-		@staticmethod
-		def IsNotNone(t:'ObjectID.Type') -> bool:
-			return t!=None and t!=MISSING and t!=ObjectID.Type.NONE
-	
-	T = TypeVar('T')
-
 	class List(Generic[T]):
 		def __init__(self, backing_field: List[str], item_type: Type[T]):
 			self.backing_field = backing_field
@@ -101,7 +100,7 @@ class ObjectID:
 			for value_id in self.backing_field.values():
 				yield value_id if not self._value_id_info else self._value_id_info.get(value_id)
 
-	def __init__(self, cls:object_type, id_type:'ObjectID.Type', name:str):
+	def __init__(self, cls:object_type, id_type:IDType, name:str):
 		self.cls = cls
 		self.name = name
 		self.type = id_type
@@ -117,7 +116,7 @@ class ObjectID:
 	
 	@staticmethod
 	def get_id_info(cls:Any) -> 'ObjectID':
-		return getattr(cls, ObjectID.info_field_name, ObjectID(None, ObjectID.Type.NONE, None))
+		return getattr(cls, ObjectID.info_field_name, ObjectID(None, IDType.NONE, None))
 	
 	def setup(self):
 		if self:
@@ -125,10 +124,10 @@ class ObjectID:
 			setattr(self.cls, ObjectID.info_field_name, self)
 			
 			# Create any auto id fields:
-			if self.type == ObjectID.Type.UUID:
+			if self.type == IDType.UUID:
 				setattr(self.cls,self.name, field(default_factory=ObjectID.generate_uuid, kw_only=False))
 				self.cls.__annotations__[self.name] = str
-			if self.type == ObjectID.Type.INCREMENT:
+			if self.type == IDType.INCREMENT:
 				setattr(self.cls,self.name, field(default_factory=lambda self=self:self.generate_increment_id(), kw_only=False))
 				self.cls.__annotations__[self.name] = str
 			
@@ -165,7 +164,7 @@ class ObjectID:
 		return id_val
 	
 	def __bool__(self) -> bool:
-		return self.type != ObjectID.Type.NONE
+		return self.type != IDType.NONE
 
 class _JSON_DataclassMixin(Generic[T]):
 	'''
@@ -185,7 +184,7 @@ class _JSON_DataclassMixin(Generic[T]):
 		pass
 
 @overload
-def json_dataclass(id_type:ObjectID.Type=MISSING, has_id:bool=MISSING, auto_id_name:str=_default_auto_id_name, user_id_name:str=None) -> Callable[[Type[T]], Type[T] | Type[_JSON_DataclassMixin[T]]]:
+def json_dataclass(id_type:IDType=MISSING, has_id:bool=MISSING, auto_id_name:str=_default_auto_id_name, user_id_name:str=None) -> Callable[[Type[T]], Type[T] | Type[_JSON_DataclassMixin[T]]]:
 	pass
 
 @overload
@@ -201,35 +200,35 @@ def json_dataclass(*args, **kwargs) -> Callable[[Type[T]], Type[T] | Type[_JSON_
 	# if not, we'll assume _cls is an arg and return a decorator that will treat it like one:
 	return wrap
 
-def _process_class(cls: Type[T], id_type:ObjectID.Type=MISSING, has_id:bool=MISSING, auto_id_name:str=_default_auto_id_name, user_id_name:str=None, small_id:bool=_default_use_small_ids) -> Type[T] | Type[_JSON_DataclassMixin[T]]:
+def _process_class(cls: Type[T], id_type:IDType=MISSING, has_id:bool=MISSING, auto_id_name:str=_default_auto_id_name, user_id_name:str=None, small_id:bool=_default_use_small_ids) -> Type[T] | Type[_JSON_DataclassMixin[T]]:
 	# Figure out if we have an id, and what type we have if so:
 	has_id = (
 		has_id
-		or ObjectID.Type.IsNotNone(id_type)
+		or IDType.IsNotNone(id_type)
 		or auto_id_name != _default_auto_id_name
 		or user_id_name
 		or small_id!=_default_use_small_ids
 	)
 	if not has_id:
-		id_type = ObjectID.Type.NONE
+		id_type = IDType.NONE
 	else:
-		if ObjectID.Type.IsNotNone(id_type):
-			if id_type == ObjectID.Type.UUID:
+		if IDType.IsNotNone(id_type):
+			if id_type == IDType.UUID:
 				assert auto_id_name, "Auto id field name must be supplied when using UUIDs."
-			elif id_type == ObjectID.Type.INCREMENT:
+			elif id_type == IDType.INCREMENT:
 				assert auto_id_name, "Auto id field name must be supplied when using INCREMENT ids."
-			elif id_type == ObjectID.Type.USER:
+			elif id_type == IDType.USER:
 				assert user_id_name, "User id field name must be supplied when using user supplied id fields."
 			else:
 				raise NotImplemented
 		elif auto_id_name != _default_auto_id_name:
-			id_type = ObjectID.Type.INCREMENT if small_id else ObjectID.Type.UUID
+			id_type = IDType.INCREMENT if small_id else IDType.UUID
 		elif user_id_name:
-			id_type = ObjectID.Type.USER
+			id_type = IDType.USER
 		else:
-			id_type = ObjectID.Type.INCREMENT if small_id else ObjectID.Type.UUID
+			id_type = IDType.INCREMENT if small_id else IDType.UUID
 	
-	obj_id = ObjectID(cls, id_type, user_id_name if id_type == ObjectID.Type.USER else auto_id_name)
+	obj_id = ObjectID(cls, id_type, user_id_name if id_type == IDType.USER else auto_id_name)
 	obj_id.setup()
 	
 	def replace_dict_item(d: dict, old_key, new_key, new_value) -> dict:
@@ -376,7 +375,6 @@ if __name__ == "__main__":
 	class holders_holder:
 		holder1:holder
 		holder2:holder
-
 	import json
 	h = holder("Hi")
 	h.add(node("person"))
