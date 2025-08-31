@@ -1,19 +1,5 @@
 from dataclasses import dataclass, Field, field
 
-# Replace the internal function inside dataclasses_json for decoding a dataclass
-# so as to make it call __post_init__ when decoding dataclasses:
-from dataclasses_json.core import _decode_dataclass as _old_decode_dataclass
-if not getattr(_old_decode_dataclass, "__modified_to_include_post_init_call__", False):
-	def _decode_dataclass(cls, kvs, infer_missing):
-		obj = _old_decode_dataclass(cls, kvs, infer_missing)
-		if hasattr(obj, "__post_init__"):
-			obj.__post_init__()
-		return obj
-	setattr(_decode_dataclass, "__modified_to_include_post_init_call__", True)
-	
-	import dataclasses_json
-	dataclasses_json.core._decode_dataclass = _decode_dataclass
-
 
 from dataclasses_json import dataclass_json, config
 from typing import List, Dict, Any, Type, TypeVar, Generic, Callable, ClassVar, Optional
