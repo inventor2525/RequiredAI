@@ -3,6 +3,7 @@ from dataclasses_json import dataclass_json, config
 from typing import List, Dict, Any, Type, TypeVar, Generic, Callable, ClassVar, Optional
 from typing import get_origin, get_args, Annotated, ForwardRef, overload, Iterator
 from enum import Enum
+import collections
 import uuid
 
 T = TypeVar('T')
@@ -125,10 +126,10 @@ class ObjectID:
 			
 			# Create any auto id fields:
 			if self.type == IDType.UUID:
-				setattr(self.cls,self.name, field(default_factory=ObjectID.generate_uuid, kw_only=False))
+				setattr(self.cls,self.name, field(default_factory=ObjectID.generate_uuid, kw_only=False, init=False))
 				self.cls.__annotations__[self.name] = str
 			if self.type == IDType.INCREMENT:
-				setattr(self.cls,self.name, field(default_factory=lambda self=self:self.generate_increment_id(), kw_only=False))
+				setattr(self.cls,self.name, field(default_factory=lambda self=self:self.generate_increment_id(), kw_only=False, init=False))
 				self.cls.__annotations__[self.name] = str
 			
 			# Setup by id tracking of instances:
@@ -184,7 +185,7 @@ class _JSON_DataclassMixin(Generic[T]):
 		pass
 
 @overload
-def json_dataclass(id_type:IDType=MISSING, has_id:bool=MISSING, auto_id_name:str=_default_auto_id_name, user_id_name:str=None) -> Callable[[Type[T]], Type[T] | Type[_JSON_DataclassMixin[T]]]:
+def json_dataclass(id_type:IDType=MISSING, has_id:bool=MISSING, auto_id_name:str=_default_auto_id_name, user_id_name:str=None, exclude:List[str|Type]=[collections.abc.Callable]) -> Callable[[Type[T]], Type[T] | Type[_JSON_DataclassMixin[T]]]:
 	pass
 
 @overload
@@ -200,7 +201,7 @@ def json_dataclass(*args, **kwargs) -> Callable[[Type[T]], Type[T] | Type[_JSON_
 	# if not, we'll assume _cls is an arg and return a decorator that will treat it like one:
 	return wrap
 
-def _process_class(cls: Type[T], id_type:IDType=MISSING, has_id:bool=MISSING, auto_id_name:str=_default_auto_id_name, user_id_name:str=None, small_id:bool=_default_use_small_ids) -> Type[T] | Type[_JSON_DataclassMixin[T]]:
+def _process_class(cls: Type[T], id_type:IDType=MISSING, has_id:bool=MISSING, auto_id_name:str=_default_auto_id_name, user_id_name:str=None, small_id:bool=_default_use_small_ids, exclude:List[str|Type]=[collections.abc.Callable]) -> Type[T] | Type[_JSON_DataclassMixin[T]]:
 	# Figure out if we have an id, and what type we have if so:
 	has_id = (
 		has_id
@@ -231,6 +232,15 @@ def _process_class(cls: Type[T], id_type:IDType=MISSING, has_id:bool=MISSING, au
 	obj_id = ObjectID(cls, id_type, user_id_name if id_type == IDType.USER else auto_id_name)
 	obj_id.setup()
 	
+	# Organize what things we're to exclude:
+	field_exclusion = set()
+	type_exclusion = set()
+	for item in exclude:
+		if isinstance(item, str):
+			field_exclusion.add(item)
+		else:
+			type_exclusion.add(item)
+	
 	def replace_dict_item(d: dict, old_key, new_key, new_value) -> dict:
 		'''
 		Changes both key and value for an item, keeping it's insertion order.
@@ -254,11 +264,31 @@ def _process_class(cls: Type[T], id_type:IDType=MISSING, has_id:bool=MISSING, au
 		)
 		setattr(cls, prop_name, prop)
 	
+	def exclude_field(field_name:str):
+		'''
+		Mark this field never to be serialized.
+		'''
+		default = getattr(cls, field_name, MISSING)
+		if default == MISSING:
+			setattr(cls, field_name, field(metadata=config(exclude=lambda _:True)))
+		elif isinstance(default, Field):
+			default.metadata = config(metadata=dict(default.metadata), exclude=lambda _:True)
+		else:
+			setattr(cls, field_name, field(default=default, exclude=lambda _:True))
+	
 	# Replace all fields marked ReferenceByID with a property that
 	# references them by id in the static mapping of objects
 	# referenced by id held inside that fields type.
 	for field_name, field_type in list(cls.__annotations__.items()):
+		if field_name in field_exclusion:
+			exclude_field(field_name)
+			continue
+		
 		type_origin = get_origin(field_type)
+		if type_origin in type_exclusion or field_type in type_exclusion:
+			exclude_field(field_name)
+			continue
+					
 		if type_origin == Annotated:
 			type_args = get_args(field_type)
 			if len(type_args)==2 and type_args[1]=="Reference By ID":
@@ -273,6 +303,11 @@ def _process_class(cls: Type[T], id_type:IDType=MISSING, has_id:bool=MISSING, au
 						field_type = cls
 				new_field_name = f"__{field_name}__"
 				
+				type_origin = get_origin(field_type)
+				if type_origin in type_exclusion or field_type in type_exclusion:
+					exclude_field(field_name)
+					continue
+				
 				# Set the default value if provided:
 				field_default = getattr(cls, field_name, MISSING)
 				if field_default is MISSING:
@@ -284,7 +319,7 @@ def _process_class(cls: Type[T], id_type:IDType=MISSING, has_id:bool=MISSING, au
 					setattr(cls, new_field_name, field(default=field_default, metadata=config(field_name=field_name)))
 				
 				# Replace the field with a property:
-				if get_origin(field_type) == None:
+				if type_origin == None:
 					cls.__annotations__ = replace_dict_item(cls.__annotations__, field_name, new_field_name, Optional[str])
 					
 					def prop_get(self, new_field_name=new_field_name, field_type=field_type):
@@ -296,7 +331,7 @@ def _process_class(cls: Type[T], id_type:IDType=MISSING, has_id:bool=MISSING, au
 						obj_id = ObjectID.get_id_info(field_type).id_for(val)
 						setattr(self, new_field_name, obj_id)
 					add_property(field_name, field_type, prop_get, prop_set)
-				elif get_origin(field_type) == list:
+				elif type_origin == list:
 					cls.__annotations__ = replace_dict_item(cls.__annotations__, field_name, new_field_name, Optional[List[str]])
 					
 					element_type = get_args(field_type)[0]
@@ -312,7 +347,7 @@ def _process_class(cls: Type[T], id_type:IDType=MISSING, has_id:bool=MISSING, au
 							ids = [ObjectID.get_id_info(element_type).id_for(element) for element in val]
 							setattr(self, new_field_name, ids)
 					add_property(field_name, field_type, prop_get, prop_set)
-				elif get_origin(field_type) == dict:
+				elif type_origin == dict:
 					key_type, value_type = get_args(field_type)
 					key_id_info = ObjectID.get_id_info(key_type)
 					value_id_info = ObjectID.get_id_info(value_type)
