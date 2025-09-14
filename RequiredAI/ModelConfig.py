@@ -41,7 +41,7 @@ class ContextOriginConfig:
         return ContextOriginConfig((0,-1))
     
     @staticmethod
-    def select_with(messages: List[Dict[str, str]], context_configs:None | 'ContextOriginConfig' | List['ContextOriginConfig']) -> List[Dict[str, str]]:
+    def select_with(messages: List[Dict[str, str]], context_configs:Union[None, 'ContextOriginConfig', List['ContextOriginConfig']]) -> List[Dict[str, str]]:
         if context_configs is None:
             return messages
         
