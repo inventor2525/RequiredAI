@@ -33,11 +33,11 @@
     {
       "name":"NoApology",
       "provider": "RequiredAI",
-      "provider_model": "llama3.3 70b",
+      "provider_model": "gemini",
       "requirements":[
         {
           "__requirement_type__": "Written",
-          "evaluation_model": "llama3.3 70b",
+          "evaluation_model": "gemini",
           "value": [
               "Do not apologize to the user."
           ],
@@ -47,6 +47,12 @@
           "name": "No apologies!"
         }
       ]
+    },
+    {
+      "name":"gemini",
+      "provider": "gemini",
+      "provider_model": "gemini-2.5-flash",
+      "api_key_env": "GEMINI_API_KEY"
     }
   ],
   "revise_prompt_template": "Your previous response did not meet the following requirement: {requirement_prompt}. Please revise your response to meet this requirement while maintaining the quality and relevance of your answer."

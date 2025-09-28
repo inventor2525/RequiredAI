@@ -1,8 +1,13 @@
+"""
+Gemini provider for RequiredAI.
+"""
+
 import os
 import uuid
 import time
 from typing import Dict, List, Any, Optional
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 from ..ModelConfig import ModelConfig
 
 from . import BaseModelProvider, provider
@@ -22,7 +27,7 @@ class GeminiProvider(BaseModelProvider):
         api_key = config.get_api_key("GEMINI_API_KEY")
         if not api_key:
             raise ValueError(f"API key for Gemini model named '{config.name}' not set!")
-        genai.configure(api_key=api_key)
+        self.client = genai.Client(api_key=api_key)
 
     def complete(self, messages: List[Dict[str, Any]], params: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -40,63 +45,54 @@ class GeminiProvider(BaseModelProvider):
         max_tokens = params.get("max_tokens", 1024)
         temperature = params.get("temperature", 0.7)
 
-        gemini_messages = []
-        system_instruction_content = None
+        # Extract initial system instructions
+        system_instruction = ""
+        i = 0
+        while i < len(messages) and messages[i].get("role") == "system":
+            if system_instruction:
+                system_instruction += "\n\n"
+            system_instruction += messages[i]["content"]
+            i += 1
 
-        # Extract system message if present (similar to AnthropicProvider)
-        # The first message with role 'system' is treated as a system instruction for Gemini model initialization.
-        conversation_messages = []
-        if messages and messages[0].get("role") == "system":
-            system_instruction_content = messages[0]["content"]
-            conversation_messages = messages[1:]
-        else:
-            conversation_messages = messages
-
-        for msg in conversation_messages:
-            role = msg["role"]
+        # Process remaining messages
+        gemini_contents = []
+        for msg in messages[i:]:
+            role = msg.get("role")
             content = msg["content"]
-            # Gemini expects 'user' and 'model' roles. 'assistant' maps to 'model'.
-            gemini_role = "user" if role == "user" else "model"
-            gemini_messages.append({"role": gemini_role, "parts": [content]})
-        
-        # Prepare generation configuration
-        generation_config = {
-            "max_output_tokens": max_tokens,
-            "temperature": temperature,
-        }
+            if role == "system":
+                role = "user"
+                content = "from system:\n" + content
+            elif role == "assistant":
+                role = "model"
+            else:
+                role = "user"
+            gemini_contents.append({"role": role, "parts": [{"text": content}]})
 
-        # Instantiate GenerativeModel with system_instruction for this call.
-        # This allows dynamic system instructions if they are passed within the 'messages' list.
-        model_client = genai.GenerativeModel(
-            provider_model_name,
-            system_instruction=system_instruction_content if system_instruction_content else None
+        # Prepare config
+        generation_config = types.GenerateContentConfig(
+            max_output_tokens=max_tokens,
+            temperature=temperature,
+            system_instruction=system_instruction if system_instruction else None
         )
 
         # Make the API call
         try:
-            response = model_client.generate_content(
-                gemini_messages,
-                generation_config=generation_config
+            response = self.client.models.generate_content(
+                model=provider_model_name,
+                contents=gemini_contents,
+                config=generation_config
             )
             
             # Convert Gemini response to OpenAI-like format
             if response.candidates:
                 candidate = response.candidates[0]
-                content_text = ""
-                if candidate.content and candidate.content.parts:
-                    for part in candidate.content.parts:
-                        if hasattr(part, 'text'):
-                            content_text += part.text
+                content_text = "".join(part.text for part in candidate.content.parts if hasattr(part, 'text'))
                 
-                finish_reason = "stop" # Default
-                if candidate.finish_reason:
-                    # Map Gemini's FinishReason enum to a lowercase string
-                    finish_reason = str(candidate.finish_reason).replace("FinishReason.", "").lower()
+                finish_reason = str(candidate.finish_reason).split('.')[-1].lower()
 
-                # Generate unique ID and timestamp as Gemini response objects may not always provide them directly
                 response_id = str(uuid.uuid4())
                 response_created = int(time.time())
-
+                
                 return {
                     "id": f"gemini-chatcmpl-{response_id}",
                     "object": "chat.completion",
@@ -109,15 +105,15 @@ class GeminiProvider(BaseModelProvider):
                         },
                         "finish_reason": finish_reason
                     }],
+                    'raw':response.model_dump(),
                     "tags": list(self.config.output_tags)
                 }
             else:
                 # Handle cases where no candidates are returned (e.g., safety block)
                 if response.prompt_feedback and response.prompt_feedback.block_reason:
                     raise ValueError(f"Gemini API blocked response due to: {response.prompt_feedback.block_reason.name}")
-                raise ValueError(f"Gemini API returned no candidates or an empty response: {response}")
+                raise ValueError("Gemini API returned no candidates or an empty response")
 
         except Exception as e:
-            # Log the error and re-raise
             print(f"Error calling Gemini API: {str(e)}")
             raise

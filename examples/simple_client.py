@@ -42,7 +42,7 @@ if __name__ == "__main__":
             name="1 word answers!"
         ),
         WrittenRequirement(
-            evaluation_model="llama3.3 70b",
+            evaluation_model="gemini",
             value=[
                 "Only answer with decimal numbers, not words.",  #does not work with llama
                 # "Only answer with integer numbers, not words." #works with llama
