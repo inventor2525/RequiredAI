@@ -17,6 +17,7 @@ from .providers import BaseModelProvider
 from .providers.anthropic_provider import AnthropicProvider
 from .providers.groq_provider import GroqProvider
 from .providers.requiredai_provider import RequiredAIProvider
+from .providers.gemini_provider import GeminiProvider
 
 class RequiredAIServer:
     """Server for handling RequiredAI requests."""

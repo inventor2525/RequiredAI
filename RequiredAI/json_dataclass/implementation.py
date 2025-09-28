@@ -126,10 +126,10 @@ class ObjectID:
 			
 			# Create any auto id fields:
 			if self.type == IDType.UUID:
-				setattr(self.cls,self.name, field(default_factory=ObjectID.generate_uuid, kw_only=False, init=False))
+				setattr(self.cls,self.name, field(default_factory=ObjectID.generate_uuid, kw_only=True))
 				self.cls.__annotations__[self.name] = str
 			if self.type == IDType.INCREMENT:
-				setattr(self.cls,self.name, field(default_factory=lambda self=self:self.generate_increment_id(), kw_only=False, init=False))
+				setattr(self.cls,self.name, field(default_factory=lambda self=self:self.generate_increment_id(), kw_only=True))
 				self.cls.__annotations__[self.name] = str
 			
 			# Setup by id tracking of instances:
