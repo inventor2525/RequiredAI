@@ -3,7 +3,7 @@ Client API for RequiredAI.
 """
 
 from typing import List, Dict, Any, Optional
-from .ModelConfig import ModelConfig
+from .ModelConfig import ModelConfig, all_model_configs
 from .Requirement import Requirement, Requirements
 import requests
 import json
@@ -20,6 +20,9 @@ class RequiredAIClient:
         """
         self.base_url = base_url.rstrip('/')
         self.session = requests.Session()
+        
+        for model_name, model_config in all_model_configs.items():
+            self.add_model(model_config)
     
     def create_completion(
         self,

@@ -180,6 +180,8 @@ class ContextOriginConfig:
 
 from dataclasses_json import config
 
+all_model_configs:Dict[str, 'ModelConfig'] = {}
+
 @json_dataclass
 class ModelConfig:
     """Represents a model configuration with serialization support."""
@@ -193,6 +195,9 @@ class ModelConfig:
     ) # This handles the polymorphism of Requirement
     context_origin_config: None | ContextOriginConfig | List[ContextOriginConfig] = field(default=None)
     output_tags: List[str] = field(default_factory=list)
+    
+    def __post_init__(self):
+        all_model_configs[self.name] = self
     
     def get_api_key(self, default_env_var:Optional[str]=None) -> Optional[str]:
         env_var = self.api_key_env or default_env_var
