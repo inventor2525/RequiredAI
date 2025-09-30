@@ -10,7 +10,7 @@ import json
 if __name__ == "__main__":
     # Create a client
     client = RequiredAIClient(
-        base_url="http://localhost:5000"
+        base_url="http://localhost:5432"
     )
     
     # Create requirements
