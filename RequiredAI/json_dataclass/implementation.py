@@ -185,13 +185,13 @@ class _JSON_DataclassMixin(Generic[T]):
 		pass
 
 @overload
-def json_dataclass(id_type:IDType=MISSING, has_id:bool=MISSING, auto_id_name:str=_default_auto_id_name, user_id_name:str=None, exclude:List[str|Type]=[collections.abc.Callable]) -> Callable[[Type[T]], Type[T] | Type[_JSON_DataclassMixin[T]]]:
+def json_dataclass(id_type:IDType=MISSING, has_id:bool=MISSING, auto_id_name:str=_default_auto_id_name, user_id_name:str=None, exclude:List[str|Type]=[collections.abc.Callable]) -> Callable[[Type[T]], Type[T]]:
 	pass
 
 @overload
-def json_dataclass(_cls: Type[T]) -> Type[T] | Type[_JSON_DataclassMixin[T]]:
+def json_dataclass(_cls: Type[T]) -> Type[T]:
 	pass
-def json_dataclass(*args, **kwargs) -> Callable[[Type[T]], Type[T] | Type[_JSON_DataclassMixin[T]]] | Type[T] | Type[_JSON_DataclassMixin[T]]:
+def json_dataclass(*args, **kwargs) -> Callable[[Type[T]], Type[T]] | Type[T]:
 	def wrap(cls:Type[T]) -> Type[T]:
 		return _process_class(cls, *args, **kwargs)
 	
@@ -201,7 +201,7 @@ def json_dataclass(*args, **kwargs) -> Callable[[Type[T]], Type[T] | Type[_JSON_
 	# if not, we'll assume _cls is an arg and return a decorator that will treat it like one:
 	return wrap
 
-def _process_class(cls: Type[T], id_type:IDType=MISSING, has_id:bool=MISSING, auto_id_name:str=_default_auto_id_name, user_id_name:str=None, small_id:bool=_default_use_small_ids, exclude:List[str|Type]=[collections.abc.Callable]) -> Type[T] | Type[_JSON_DataclassMixin[T]]:
+def _process_class(cls: Type[T], id_type:IDType=MISSING, has_id:bool=MISSING, auto_id_name:str=_default_auto_id_name, user_id_name:str=None, small_id:bool=_default_use_small_ids, exclude:List[str|Type]=[collections.abc.Callable]) -> Type[T]:
 	# Figure out if we have an id, and what type we have if so:
 	has_id = (
 		has_id
