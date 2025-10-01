@@ -129,11 +129,32 @@ class WrittenRequirement(Requirement):
     """
     
     evaluation_model: str
+    '''Model used to evaluate any draft message produced.'''
+    
     value: List[str]
+    '''
+    A list of different ways of stating this requirement.
+    
+    1 will be chosen at random along with a random subset of
+    examples in any given requirement evaluation turn.
+    
+    Choosing more ways of stating a requirement with different
+    examples MAY cause some stochastic disagreement between
+    evaluations; providing opertunity for consensus algorithms.
+    '''
+    
     positive_examples: List[str] = field(default_factory=list)
+    '''Example output that does pass this requirement.'''
+    
     negative_examples: List[str] = field(default_factory=list)
-    token_limit: int = 1024
+    '''Example output that does not pass this requirement.'''
+    
+    max_example_tokens: int = 1024
+    '''A random subset of examples are chosen, up to this many input tokens.'''
+    
     name: str = ""
+    '''Name of the requirement.'''
+    
     revision_model: Optional[str] = None
     
     def evaluate(self, messages: List[dict]) -> RequirementResult:
@@ -228,7 +249,7 @@ class WrittenRequirement(Requirement):
                     # Check token count
                     current_tokens = evaluation_model.estimate_tokens(system_msg + user_msg)
                     
-                    if current_tokens <= self.token_limit:
+                    if current_tokens <= self.max_example_tokens:
                         positive_examples = temp_positive_examples
                         negative_examples = temp_negative_examples
                     else:

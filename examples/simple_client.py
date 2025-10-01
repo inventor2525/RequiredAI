@@ -28,7 +28,7 @@ if __name__ == "__main__":
         #     ],
         #     positive_examples=[],
         #     negative_examples=[],
-        #     token_limit=1024,
+        #     max_example_tokens=1024,
         #     name="Show Step-by-Step Reasoning"
         # ),
         WrittenRequirement(
@@ -38,7 +38,7 @@ if __name__ == "__main__":
             ],
             positive_examples=["1","9","10","100", "Ten"],
             negative_examples=["one hundred", "ten thousand"],
-            token_limit=1024,
+            max_example_tokens=1024,
             name="1 word answers!"
         ),
         WrittenRequirement(
@@ -49,7 +49,7 @@ if __name__ == "__main__":
             ],
             positive_examples=["1","9","10","100", "10000"],
             negative_examples=["one hundred", "five", "ten thousand"],
-            token_limit=1024,
+            max_example_tokens=1024,
             name="Numbers, not words!"
         ),
         # WrittenRequirement(
@@ -59,7 +59,7 @@ if __name__ == "__main__":
         #     ],
         #     positive_examples=["2", "5"],
         #     negative_examples=["1.0", "9.0"],
-        #     token_limit=1024,
+        #     max_example_tokens=1024,
         #     name="Show Step-by-Step Reasoning"
         # )
     ]

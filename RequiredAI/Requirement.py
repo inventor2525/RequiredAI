@@ -40,9 +40,11 @@ class typed_requirement:
 class Requirement(typed_requirement):
     """Base abstract class for all requirements."""
     
-    # Name for the requirement instance
     name: str = ""
+    '''Name of this requirement.'''
+    
     revision_model: Optional[str] = None
+    '''Model used to revise any draft produced that fails this requirement. - If none, the original drafting model is used.'''
     
     def evaluate(self, messages: List[dict]) -> RequirementResult:
         """

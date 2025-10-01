@@ -184,17 +184,33 @@ all_model_configs:Dict[str, 'ModelConfig'] = {}
 
 @json_dataclass
 class ModelConfig:
-    """Represents a model configuration with serialization support."""
+    '''
+    Configuration for a Large Language Model and optionally additional input/output filters.
+    '''
+    
     name: str
+    '''Name this model will be referred to by the RequiredAI package.'''
+    
     provider: str
+    '''Company/framework name that facilitates this model. eg, groq, RequiredAI, gemini, anthropic, etc.'''
+    
     provider_model: str
+    '''Name the provider refers to this model as.'''
+    
     api_key_env: Optional[str] = None
+    '''Each provider has a default api key environment variable, but if you wish to specify separate keys for different sets of models then you can set a different environment variable here.'''
+    
     requirements: Optional[List[Requirement]] = field(default=None, metadata=config(
 			decoder=Requirements.from_dict, encoder=Requirements.to_dict
 		)
-    ) # This handles the polymorphism of Requirement
+    )
+    '''Any requirements you wish this model to follow. Any response that does not follow any requirement will be re-drafted and all requirements checked again.'''
+    
     context_origin_config: None | ContextOriginConfig | List[ContextOriginConfig] = field(default=None)
+    '''This controls how this model selects from it's input. Filter by role, tag, message index or slicing.'''
+    
     output_tags: List[str] = field(default_factory=list)
+    '''A list of tags that will be added to each message produced by the model.'''
     
     def __post_init__(self):
         all_model_configs[self.name] = self
@@ -204,6 +220,20 @@ class ModelConfig:
         if env_var:
             return os.environ.get(env_var)
         return None
+
+def InheritedModel(name:str, base_model:ModelConfig, requirements:List[Requirement]=None, context_origin_config:ContextOriginConfig=None, output_tags:List[str]=[]) -> ModelConfig:
+    '''
+    Produces a model that filters the input, passes it to base model,
+    and ensures all requirements are met for any output.
+    '''
+    return ModelConfig(
+        name=name,
+        provider='RequiredAI',
+        provider_model=base_model.name,
+        requirements=requirements,
+        context_origin_config=context_origin_config,
+        output_tags=output_tags
+    )
 
 class ModelConfigs:
     """
