@@ -23,6 +23,7 @@ class RequiredAISystem:
 		RequiredAISystem.singleton = self
 	
 	def chat_completions(self, model_name:str, requirements:List[Requirement], messages:List[dict], params:dict) -> dict:
+		print("Generating prospect...")
 		prospective_response = ModelManager.singleton().complete_with_model(model_name, messages, params)
 		def prospect_to_choice(prospect:dict, prospects:list) -> dict:
 			return {
@@ -59,9 +60,11 @@ class RequiredAISystem:
 			failed_req = None
 			all_requirements_met = True
 			for req in requirements:
+				print(f"Evaluating {req.name}")
 				req_evaluation = req.evaluate(conversation)
 				eval_log.append(req_evaluation.evaluation_log)
 				if not req_evaluation:
+					print(f"{req.name} failed!")
 					all_requirements_met = False
 					failed_req = req
 					break
