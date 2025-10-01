@@ -169,16 +169,16 @@ class WrittenRequirement(Requirement):
             bool: True if the requirement is met, False otherwise
         """
         from RequiredAI.ModelManager import ModelManager, BaseModelProvider
-        from RequiredAI.ModelConfig import ContextOriginConfig
+        from RequiredAI.ModelConfig import InputConfig
         
         evaluation_model = ModelManager.singleton().get_provider(self.evaluation_model)
         last_message = messages[-1]
         text_to_evaluate = last_message.get("content", "")
         
-        context_config = evaluation_model.config.context_origin_config
+        context_config = evaluation_model.config.input_config
         extra_context:str = None
         if context_config:
-            context_messages = ContextOriginConfig.select_with(messages, evaluation_model.config.context_origin_config)
+            context_messages = InputConfig.select_with(messages, evaluation_model.config.input_config)
             
             msg_xmls = []
             worth_including = False

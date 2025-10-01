@@ -5,7 +5,7 @@ from .helpers import *
 import os
 
 @json_dataclass
-class ContextOriginConfig:
+class InputConfig:
     """
     Configuration for how conversation context is presented to an evaluation or revision model.
     """
@@ -35,17 +35,17 @@ class ContextOriginConfig:
     @staticmethod
     def all():
         '''
-        Returns a context origin that returns the original conversation
+        Returns a input config that returns the original conversation
         that is passed to it, basically not effecting it at all.
         '''
-        return ContextOriginConfig((0,-1))
+        return InputConfig((0,-1))
     
     @staticmethod
-    def select_with(messages: List[Dict[str, str]], context_configs:Union[None, 'ContextOriginConfig', List['ContextOriginConfig']]) -> List[Dict[str, str]]:
+    def select_with(messages: List[Dict[str, str]], context_configs:Union[None, 'InputConfig', List['InputConfig']]) -> List[Dict[str, str]]:
         if context_configs is None:
             return messages
         
-        if isinstance(context_configs, ContextOriginConfig):
+        if isinstance(context_configs, InputConfig):
             return context_configs.select(messages)
         
         new_messages = []
@@ -55,7 +55,7 @@ class ContextOriginConfig:
     
     def select(self, messages: List[Dict[str, str]]) -> List[Dict[str, str]]:
         """
-        Creates a new list of messages based on the configured context origin.
+        Creates a new list of messages based on this input configuration.
 
         This method processes an input list of messages, potentially including multiple
         system messages throughout or messages from other roles and first filters them
@@ -206,7 +206,7 @@ class ModelConfig:
     )
     '''Any requirements you wish this model to follow. Any response that does not follow any requirement will be re-drafted and all requirements checked again.'''
     
-    context_origin_config: None | ContextOriginConfig | List[ContextOriginConfig] = field(default=None)
+    input_config: None | InputConfig | List[InputConfig] = field(default=None)
     '''This controls how this model selects from it's input. Filter by role, tag, message index or slicing.'''
     
     output_tags: List[str] = field(default_factory=list)
@@ -221,7 +221,7 @@ class ModelConfig:
             return os.environ.get(env_var)
         return None
 
-def InheritedModel(name:str, base_model:ModelConfig, requirements:List[Requirement]=None, context_origin_config:ContextOriginConfig=None, output_tags:List[str]=[]) -> ModelConfig:
+def InheritedModel(name:str, base_model:ModelConfig, requirements:List[Requirement]=None, input_config:InputConfig=None, output_tags:List[str]=[]) -> ModelConfig:
     '''
     Produces a model that filters the input, passes it to base model,
     and ensures all requirements are met for any output.
@@ -231,7 +231,7 @@ def InheritedModel(name:str, base_model:ModelConfig, requirements:List[Requireme
         provider='RequiredAI',
         provider_model=base_model.name,
         requirements=requirements,
-        context_origin_config=context_origin_config,
+        input_config=input_config,
         output_tags=output_tags
     )
 

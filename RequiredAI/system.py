@@ -1,7 +1,7 @@
 from typing import List, Dict, Any, Optional, ClassVar, Tuple
 import json
 from .Requirement import Requirements, Requirement, RequirementResult
-from .ModelConfig import ContextOriginConfig, ModelConfigs
+from .ModelConfig import InputConfig, ModelConfigs
 from .ModelManager import ModelManager
 from .helpers import *
 
@@ -82,10 +82,10 @@ class RequiredAISystem:
 			
 			# Use the model from the requirement or fall back to the original model
 			corrector_model_name = getattr(failed_req, "revision_model", None) or model_name
-			#get from chat using 'revision_model''s  context_origin_config.   default context_origin_config to a new function that returns a config for 'all' (un-touched messages)
+			#get from chat using 'revision_model''s  input_config.   default input_config to a new function that returns a config for 'all' (un-touched messages)
 			
 			revision_model = ModelManager.singleton().get_provider(corrector_model_name)
-			conversation = ContextOriginConfig.select_with(chat, revision_model.config.context_origin_config) + [get_msg(prospective_response)]
+			conversation = InputConfig.select_with(chat, revision_model.config.input_config) + [get_msg(prospective_response)]
 			
 			# Get a new response using ModelManager
 			revision_conversation = conversation + [revision_prompt]
