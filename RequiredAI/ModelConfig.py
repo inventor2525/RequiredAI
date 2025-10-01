@@ -149,7 +149,7 @@ class ContextOriginConfig:
                 if 0 <= idx < conv_len:
                     selected_messages.append(messages[idx])
             elif isinstance(index_msg_or_range, dict):
-                selected_messages = [index_msg_or_range]
+                selected_messages.append(index_msg_or_range)
             elif (isinstance(index_msg_or_range, tuple) or isinstance(index_msg_or_range, list)) and len(index_msg_or_range) == 2:
                 start_orig, end_orig = index_msg_or_range
 
