@@ -17,9 +17,7 @@ class RequiredAISystem:
 			config: System configuration
 		"""
 		self.config = config
-		self.revise_prompt_template = self.config.get("revise_prompt_template", 
-			"Your previous response did not meet the following requirement: {requirement_prompt}. "
-			"Please revise your response to meet this requirement.")
+		self.revise_prompt_template = "Your previous response did not meet the following requirement: {requirement_prompt} Please revise your response to meet this requirement."
 		
 		ModelManager(ModelConfigs.from_dict(self.config["models"]))
 		RequiredAISystem.singleton = self

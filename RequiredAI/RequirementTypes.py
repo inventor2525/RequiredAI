@@ -302,4 +302,4 @@ class WrittenRequirement(Requirement):
         Returns a string explaining the written requirements.
         """
         requirements_str = "; ".join(self.value)
-        return f'Per the requirement "{self.name}": Your response should follow these written requirements: {requirements_str}'
+        return f'Per the requirement "{self.name}": Your response should follow these written requirements:\n```txt\n{requirements_str}\n```\n'
