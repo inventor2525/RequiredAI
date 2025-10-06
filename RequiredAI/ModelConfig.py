@@ -70,7 +70,7 @@ class InputConfig:
 
 		Args:
 			messages: The full list of original conversation messages, where each message
-					  is a dictionary with at least 'role' and 'content' keys.
+					is a dictionary with at least 'role' and 'content' keys.
 
 		Returns:
 			A new set of messages, selected from messages and possibly including new messages
@@ -90,7 +90,7 @@ class InputConfig:
 					if role in filter_roles:
 						role_filtered_messages.append(message)
 				elif filter_roles.get(role, True):
-					 role_filtered_messages.append(message)
+					role_filtered_messages.append(message)
 			messages = role_filtered_messages
 				
 		if self.filter_tags:
