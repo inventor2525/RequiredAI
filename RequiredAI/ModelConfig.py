@@ -221,7 +221,7 @@ class ModelConfig:
 			return os.environ.get(env_var)
 		return None
 
-def InheritedModel(name:str, base_model:ModelConfig, requirements:List[Requirement]=None, input_config:InputConfig=None, output_tags:List[str]=[]) -> ModelConfig:
+def InheritedModel(name:str, base_model:ModelConfig, requirements:List[Requirement]=None, input_config:None | InputConfig | List[InputConfig]=None, output_tags:List[str]=[]) -> ModelConfig:
 	'''
 	Produces a model that filters the input, passes it to base model,
 	and ensures all requirements are met for any output.
