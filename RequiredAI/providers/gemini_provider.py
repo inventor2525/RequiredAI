@@ -10,7 +10,7 @@ from google import genai
 from google.genai import types
 from ..ModelConfig import ModelConfig
 
-from . import BaseModelProvider, provider
+from . import BaseModelProvider, provider, ProviderException
 
 @provider('gemini')
 class GeminiProvider(BaseModelProvider):
@@ -76,6 +76,7 @@ class GeminiProvider(BaseModelProvider):
 		)
 
 		# Make the API call
+		response = None
 		try:
 			response = self.client.models.generate_content(
 				model=provider_model_name,
@@ -115,5 +116,4 @@ class GeminiProvider(BaseModelProvider):
 				raise ValueError("Gemini API returned no candidates or an empty response")
 
 		except Exception as e:
-			print(f"Error calling Gemini API: {str(e)}")
-			raise
+			raise ProviderException(GeminiProvider.provider_name, e, None if not response else response.model_dump())

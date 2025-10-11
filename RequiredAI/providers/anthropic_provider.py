@@ -7,7 +7,7 @@ from typing import Dict, List, Any, Optional
 import anthropic
 
 from ..ModelConfig import ModelConfig
-from . import BaseModelProvider, provider
+from . import BaseModelProvider, provider, ProviderException
 
 @provider('anthropic')
 class AnthropicProvider(BaseModelProvider):
@@ -72,12 +72,12 @@ class AnthropicProvider(BaseModelProvider):
 			request_params["system"] = system_content
 		
 		# Make the API call
+		response_dict = None
 		try:
 			response = self.client.messages.create(**request_params)
 			response_dict = response.dict()
 			response_dict['tags'] = list(self.config.output_tags)
 			return response_dict
 		except Exception as e:
-			print(f"Error calling Anthropic API: {str(e)}")
-			raise
+			raise ProviderException(AnthropicProvider.provider_name, e, response_dict)
 

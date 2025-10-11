@@ -7,7 +7,7 @@ from typing import Dict, List, Any, Optional
 from groq import Groq
 from ..ModelConfig import ModelConfig
 
-from . import BaseModelProvider, provider
+from . import BaseModelProvider, provider, ProviderException
 
 @provider('groq')
 class GroqProvider(BaseModelProvider):
@@ -53,11 +53,13 @@ class GroqProvider(BaseModelProvider):
 		}
 		
 		# Make the API call
+		response_dict = None
 		try:
 			response = self.client.chat.completions.create(**request_params)
 			response_dict = response.dict()
 			response_dict['tags'] = list(self.config.output_tags)
+			#Ensure there is a message:
+			msg = response_dict['choices'][0]['message']['content']
 			return response_dict
 		except Exception as e:
-			print(f"Error calling Groq API: {str(e)}")
-			raise
+			raise ProviderException(GroqProvider.provider_name, e, response_dict)

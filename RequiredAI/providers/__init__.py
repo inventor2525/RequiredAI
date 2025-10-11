@@ -4,6 +4,16 @@ Provider system for RequiredAI.
 
 from typing import Dict, Type, List, Any, Optional, TypeVar, Callable, Union
 from ..ModelConfig import ModelConfig
+import json
+class ProviderException(Exception):
+	def __init__(self, provider:str, exception: Exception, response_dict: Optional[dict] = None):
+		self.provider = provider
+		self.exception = exception
+		self.response_dict = response_dict
+		extra_str = ''
+		if response_dict:
+			extra_str = f"\n\nBut it did generate the following output:\n```json\n{json.dumps(response_dict, indent=4)}\n```"
+		super().__init__(f"API provider '{provider}' failed to generate response with exception:\n```txt\n{str(exception)}\n```{extra_str}")
 
 T = TypeVar('T')
 class BaseModelProvider:
@@ -54,7 +64,8 @@ def provider(provider_name:str) -> Callable[[T],T]:
 	'''
 	Decorator to register a model provider class.
 	'''
-	def inner(c:T, name:str=provider_name) -> T:
-		BaseModelProvider._PROVIDER_REGISTRY[name] = c
+	def inner(c:T, provider_name:str=provider_name) -> T:
+		BaseModelProvider._PROVIDER_REGISTRY[provider_name] = c
+		c.provider_name = provider_name
 		return c
 	return inner
