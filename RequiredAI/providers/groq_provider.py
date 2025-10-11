@@ -34,8 +34,6 @@ class GroqProvider(BaseModelProvider):
 		"""
 		# Extract parameters
 		provider_model = self.config.provider_model
-		max_tokens = params.get("max_tokens", 1024)
-		temperature = params.get("temperature", 0.7)
 		
 		# Format messages for Groq API (same format as OpenAI)
 		groq_messages = []
@@ -51,8 +49,7 @@ class GroqProvider(BaseModelProvider):
 		request_params = {
 			"model": provider_model,
 			"messages": groq_messages,
-			"max_tokens": max_tokens,
-			"temperature": temperature
+			**params
 		}
 		
 		# Make the API call
