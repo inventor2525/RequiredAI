@@ -42,8 +42,6 @@ class GeminiProvider(BaseModelProvider):
 		"""
 		# Extract parameters
 		provider_model_name = self.config.provider_model
-		max_tokens = params.get("max_tokens", 1024)
-		temperature = params.get("temperature", 0.7)
 
 		# Extract initial system instructions
 		system_instruction = ""
@@ -70,8 +68,8 @@ class GeminiProvider(BaseModelProvider):
 
 		# Prepare config
 		generation_config = types.GenerateContentConfig(
-			max_output_tokens=max_tokens,
-			temperature=temperature,
+			# max_output_tokens=max_tokens,
+			# temperature=temperature,
 			system_instruction=system_instruction if system_instruction else None
 		)
 

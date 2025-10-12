@@ -34,8 +34,6 @@ class AnthropicProvider(BaseModelProvider):
 		"""
 		# Extract parameters
 		provider_model = self.config.provider_model
-		max_tokens = params.get("max_tokens", 1024)
-		temperature = params.get("temperature", 0.7)
 		
 		# Format messages for Anthropic API
 		anthropic_messages = []
@@ -62,8 +60,6 @@ class AnthropicProvider(BaseModelProvider):
 		# Create the request parameters
 		request_params = {
 			"model": provider_model,
-			"max_tokens": max_tokens,
-			"temperature": temperature,
 			"messages": anthropic_messages
 		}
 		
