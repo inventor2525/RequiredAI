@@ -272,8 +272,7 @@ class WrittenRequirement(Requirement):
 			# Get the evaluation from the model
 			eval_args = {
 				"model_name":self.evaluation_model,
-				"messages":eval_messages,
-				"params":{"max_tokens": 1024, "temperature": 0.0}  # Use low temperature for consistent results
+				"messages":eval_messages
 			}
 			response = ModelManager.singleton().complete_with_model(**eval_args)
 			
