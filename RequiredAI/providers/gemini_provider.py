@@ -9,6 +9,7 @@ from typing import Dict, List, Any, Optional
 from google import genai
 from google.genai import types
 from ..ModelConfig import ModelConfig
+from ..helpers import remap
 
 from . import BaseModelProvider, provider, ProviderException
 
@@ -65,12 +66,12 @@ class GeminiProvider(BaseModelProvider):
 			else:
 				role = "user"
 			gemini_contents.append({"role": role, "parts": [{"text": content}]})
-
+						
+		remap(params, 'max_tokens', 'max_output_tokens')
 		# Prepare config
 		generation_config = types.GenerateContentConfig(
-			# max_output_tokens=max_tokens,
-			# temperature=temperature,
-			system_instruction=system_instruction if system_instruction else None
+			system_instruction=system_instruction if system_instruction else None,
+			**params
 		)
 
 		# Make the API call

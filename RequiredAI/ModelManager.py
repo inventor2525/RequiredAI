@@ -53,20 +53,27 @@ class ModelManager:
 		self.provider_instances[model_name] = provider
 		return provider
 	
-	def complete_with_model(self, model_name: str, messages: List[Dict[str, Any]], params: Dict[str, Any]) -> Dict[str, Any]:
+	def complete_with_model(self, model_name: str, messages: List[Dict[str, Any]], params: Dict[str, Any]={}) -> Dict[str, Any]:
 		"""
 		Generate a completion using the specified model.
 		
 		Args:
 			model_name: The name of the model
 			messages: The conversation messages
-			params: Additional parameters for the request
+			params: Additional parameters for the request (note
+				that these will override [by key] any in the model
+				config's 'default_params', for this request.)
 			
 		Returns:
 			The model's response message
 		"""
 		provider = self.get_provider(model_name)
-		return provider.complete(messages, params)
+		if params and provider.config.default_params:
+			p = dict(provider.config.default_params)
+			p.update(params)
+		else:
+			p = provider.config.default_params or params
+		return provider.complete(messages, p)
 	
 	def estimate_tokens(self, text: str, model_name: str) -> int:
 		"""

@@ -22,7 +22,7 @@ class RequiredAISystem:
 		ModelManager(ModelConfigs.from_dict(self.config["models"]))
 		RequiredAISystem.singleton = self
 	
-	def chat_completions(self, model_name:str, requirements:List[Requirement], messages:List[dict], params:dict) -> dict:
+	def chat_completions(self, model_name:str, requirements:List[Requirement], messages:List[dict], params:dict={}) -> dict:
 		print("Generating prospect...")
 		prospective_response = ModelManager.singleton().complete_with_model(model_name, messages, params)
 		def prospect_to_choice(prospect:dict, prospects:list) -> dict:
@@ -92,7 +92,7 @@ class RequiredAISystem:
 			revision_input = {
 				"model_name": corrector_model_name,
 				"messages": revision_conversation,
-				"params": {}
+				"params": params
 			}
 			new_response = ModelManager.singleton().complete_with_model(**revision_input)
 			

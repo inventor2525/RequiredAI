@@ -60,7 +60,8 @@ class AnthropicProvider(BaseModelProvider):
 		# Create the request parameters
 		request_params = {
 			"model": provider_model,
-			"messages": anthropic_messages
+			"messages": anthropic_messages,
+			**params
 		}
 		
 		# Only add system parameter if it exists

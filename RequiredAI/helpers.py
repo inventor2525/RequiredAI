@@ -38,3 +38,12 @@ def code_block_text(text:str, language:str='txt'):
 def indent_text(text:str, indent:str='\t') -> str:
 	'''Indent text over with 'indent' str.'''
 	return indent + f'\n{indent}'.join(text.split('\n'))
+
+def remap(d:dict, old_key:str, new_key:str):
+	'''
+	Move the value for old_key (if it exists) in d
+	to new_key
+	'''
+	if old_key in d:
+		d[new_key] = d[old_key]
+		del d[old_key]

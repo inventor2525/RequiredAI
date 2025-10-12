@@ -212,6 +212,12 @@ class ModelConfig:
 	output_tags: List[str] = field(default_factory=list)
 	'''A list of tags that will be added to each message produced by the model.'''
 	
+	default_params: dict = field(default_factory={})
+	'''
+	Parameters that will be passed to the api provider. Any that you pass
+	into a completion endpoint will override these on a per key basis.
+	'''
+	
 	def __post_init__(self):
 		all_model_configs[self.name] = self
 	
