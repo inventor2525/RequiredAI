@@ -57,9 +57,7 @@ class GroqProvider(BaseModelProvider):
 		try:
 			response = self.client.chat.completions.create(**request_params)
 			response_dict = response.dict()
-			response_dict['tags'] = list(self.config.output_tags)
-			#Ensure there is a message:
-			msg = response_dict['choices'][0]['message']['content']
+			response_dict['choices'][0]['message']['tags'] = list(self.config.output_tags)
 			return response_dict
 		except Exception as e:
 			raise ProviderException(GroqProvider.provider_name, e, response_dict)

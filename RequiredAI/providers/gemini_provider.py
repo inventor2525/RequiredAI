@@ -101,12 +101,12 @@ class GeminiProvider(BaseModelProvider):
 					"choices": [{
 						"message": {
 							"role": "assistant",
-							"content": content_text
+							"content": content_text,
+							"tags": list(self.config.output_tags)
 						},
 						"finish_reason": finish_reason
 					}],
-					'raw':response.model_dump(),
-					"tags": list(self.config.output_tags)
+					'raw':response.model_dump()
 				}
 			else:
 				# Handle cases where no candidates are returned (e.g., safety block)

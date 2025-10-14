@@ -73,7 +73,7 @@ class AnthropicProvider(BaseModelProvider):
 		try:
 			response = self.client.messages.create(**request_params)
 			response_dict = response.dict()
-			response_dict['tags'] = list(self.config.output_tags)
+			response_dict['choices'][0]['message']['tags'] = list(self.config.output_tags)
 			return response_dict
 		except Exception as e:
 			raise ProviderException(AnthropicProvider.provider_name, e, response_dict)
