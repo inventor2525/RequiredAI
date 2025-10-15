@@ -25,30 +25,22 @@ class RequiredAISystem:
 	def chat_completions(self, model_name:str, requirements:List[Requirement], messages:List[dict], params:dict={}) -> dict:
 		print("Generating prospect...")
 		prospective_response = ModelManager.singleton().complete_with_model(model_name, messages, params)
-		def prospect_to_choice(prospect:dict, prospects:list) -> dict:
-			return {
-				"id":get_id(prospect),
-				"message": get_msg(prospect),
-				"finish_reason": get_finish_reason(prospect),
-				"prospects":prospects
-			}
+				
+		def add_eval_log_to(prospect:dict) -> list:
+			eval_log = []
+			prospect['requirements_evaluation_log'] = eval_log
+			return eval_log
 		
-		def prospect_to_prospect_info(prospect:dict, log_element:Optional[dict]=None) -> Tuple[dict, list]:
-			eval_log = [log_element] if log_element else []
-			return {
-				'prospect':prospect,
-				'eval_log':eval_log
-			}, eval_log
-		
-		def eval_log_end(eval_log:List[dict], requirements_met:bool, last_element_fields:Optional[Dict[str,Any]]={}) -> None:
+		def end_prospects_eval_log(eval_log:List[dict], requirements_met:bool, last_element_fields:Optional[Dict[str,Any]]={}) -> None:
 			eval_log.append({
 				"requirements_met":requirements_met,
 				**last_element_fields
 			})
+		#TODO: clean methods after and fix comments
 		
 		# Process requirements
-		prospect_info, eval_log = prospect_to_prospect_info(prospective_response)
-		prospective_responses = [prospect_info]
+		eval_log = add_eval_log_to(prospective_response)
+		prospective_responses = [prospective_response]
 		
 		# Track choices directly
 		chat = list(messages)
@@ -71,7 +63,7 @@ class RequiredAISystem:
 			
 			# If all requirements are met, we're done
 			if all_requirements_met:
-				eval_log_end(eval_log, True)
+				end_prospects_eval_log(eval_log, True)
 				break
 			
 			# Create a revision prompt
@@ -96,15 +88,15 @@ class RequiredAISystem:
 			}
 			new_response = ModelManager.singleton().complete_with_model(**revision_input)
 			
-			eval_log_end(eval_log, False, {
+			end_prospects_eval_log(eval_log, False, {
 				"revision_input":revision_input,
 				"revision_id":get_id(new_response)
 			})
 			
 			# Update the prospective response for the next iteration
 			prospective_response = new_response
-			prospect_info, eval_log = prospect_to_prospect_info(prospective_response)
-			prospective_responses.append(prospect_info)
+			eval_log = add_eval_log_to(prospective_response)
+			prospective_responses.append(prospective_response)
 		
 		# Construct the final response
 		response = {
@@ -112,7 +104,13 @@ class RequiredAISystem:
 			"object": "chat.completion",
 			"created": self._get_timestamp(),
 			"model": model_name,
-			"choices": [prospect_to_choice(prospective_response, prospective_responses)]
+			"choices": [{
+				"id":get_id(prospective_responses[-1]),
+				"message": get_msg(prospective_responses[-1]),
+				"finish_reason": get_finish_reason(prospective_responses[-1]),
+				"failed_prospects":prospective_responses[:-1]
+			}],
+			"model_config": ModelManager.singleton().model_configs[model_name].as_dict()
 		}
 		
 		return response
