@@ -145,10 +145,10 @@ class RequiredAISystem:
 			"created": self._get_timestamp(),
 			"model": model_name,
 			"choices": [{
-				"id":get_id(prospective_responses[-1]),
-				"message": get_msg(prospective_responses[-1]),
-				"finish_reason": get_finish_reason(prospective_responses[-1]),
-				"failed_prospects":prospective_responses[:-1]
+				"id":get_id(prospective_response),
+				"message": get_msg(prospective_response),
+				"finish_reason": get_finish_reason(prospective_response),
+				"prospects":prospective_responses
 			}],
 			"model_config": ModelManager.singleton().model_configs[model_name].as_dict()
 		}
