@@ -23,45 +23,40 @@ class RequiredAISystem:
 		RequiredAISystem.singleton = self
 		self.response_map: Dict[str, Dict[str, Any]] = {}
 	
-	def chat_completions(self, model_name:str, requirements:List[Requirement], messages:List[dict], params:dict={}, key: Optional[str] = None) -> dict:
-		response = {
-			"id": "reqai-" + self._generate_id(),
-			"object": "chat.completion",
-			"created": self._get_timestamp(),
-			"model": model_name,
-			"choices": [{
-				"prospects": []
-			}],
-			"model_config": ModelManager.singleton().model_configs[model_name].as_dict(),
-			"done":False
-		}
-		def errors(response:dict=response) -> list:
-			c = response['choices'][0]
-			if 'errors' not in response:
-				c['errors'] = []
-			return c['errors']
-		prospective_responses = response["choices"][0]["prospects"]
+	def chat_completions(self, model_name:str, requirements:List[Requirement], messages:List[dict], params:dict={}, key: Optional[str] = None, initial_response: Optional[Dict[str, Any]] = None) -> dict:
+		if initial_response is None:
+			response = {
+				"id": "reqai-" + self._generate_id(),
+				"object": "chat.completion",
+				"created": self._get_timestamp(),
+				"model": model_name,
+				"choices": [{
+					"prospects": []
+				}],
+				"model_config": ModelManager.singleton().model_configs[model_name].as_dict(),
+				"done":False
+			}
+		else:
+			response = dict(initial_response)
+			response.update({
+				"id": "reqai-" + self._generate_id(),
+				"created": self._get_timestamp(),
+				"model": model_name,
+				"model_config": ModelManager.singleton().model_configs[model_name].as_dict(),
+				'initial_draft_response':initial_response['id'],
+				"done":False
+			})
+		
+		prospective_responses:List[dict] = response["choices"][0]["prospects"]
 		
 		if key:
 			self.response_map[key] = response
 		
-		# Generate a first draft response that we'll
-		# check the requirements against after:
-		print("Generating prospect...")
-		try:
-			prospective_response = ModelManager.singleton().complete_with_model(model_name, messages, params)
-		except Exception as e:
-			response["choices"][0]["finish_reason"] = f"Error generating prospect"
-			errors().append({
-				'exception':e,
-				'exception_type':type(e).__name__,
-				'response':prospective_response
-			})
-			return response
-		
-		# Start a log for the current prospective message
-		# that will be attached to it as a audit trail for
-		# the evaluation of each requirement we check it for:
+		def errors(response:dict=response) -> list:
+			c = response['choices'][0]
+			if 'errors' not in c:
+				c['errors'] = []
+			return c['errors']
 		def add_eval_log_to(prospect:dict) -> list:
 			eval_log = []
 			prospect['requirements_evaluation_log'] = eval_log
@@ -86,40 +81,38 @@ class RequiredAISystem:
 				return True
 			return False
 		
-		eval_log = add_eval_log_to(prospective_response)
-		prospective_responses.append(prospective_response)
-		set_choice(prospective_response)
+		if len(prospective_responses) == 0:
+			# Generate a first draft response that we'll
+			# check the requirements against after:
+			print("Generating prospect...")
+			try:
+				prospective_response = ModelManager.singleton().complete_with_model(model_name, messages, params)
+			except Exception as e:
+				response["choices"][0]["finish_reason"] = f"Error generating prospect"
+				errors().append({
+					'exception':e,
+					'exception_type':type(e).__name__,
+					'response':prospective_response
+				})
+				return response
+			
+			# Start a log for the current prospective message
+			# that will be attached to it as a audit trail for
+			# the evaluation of each requirement we check it for:
+			eval_log = add_eval_log_to(prospective_response)
+			prospective_responses.append(prospective_response)
+			set_choice(prospective_response)
+		else:
+			# Duplicate the last prospective response and
+			# replace the evaluation log with a new one:
+			prospective_response = dict(response["choices"][0]["prospects"][-1])
+			del prospective_response['requirements_evaluation_log']
+			prospective_responses.append(prospective_response)
+			eval_log = add_eval_log_to(prospective_response)
+			set_choice(prospective_response)
 		
 		# Iteratively re-draft the response until all requirements are met:
 		# (The only time this should ever stop is if the user stops it!)
-		
-		# TODO: implement a means for the client to stop a given chat completion
-		# for instances such as conflicting requirements causing infinite loop
-		# or long response time.
-		#
-		# There should not be a server side stopping condition.
-		#
-		# json for the return obj should be stored to ram disk at the eval of 
-		# each requirement or re-draft, and the client should pass in a key
-		# that the client can call cancel on via separate route or get
-		# a status with or reload a response from ram disk after a server 
-		# application crash (possibly another thread or process could move
-		# to disk periodic). -- Client should also be able to continue from
-		# a response object provided in the same format as we return (that way
-		# they can continue to generate new candidate prospective messages
-		# until again it is stopped early or the requirements are all met).
-		# 
-		# The client passing the key, means that it doesn't need to
-		# wait for the server to provide it a one, and doesn't need a separate
-		# async response function for chat completions. It can simply provide
-		# an optional key to chat completion and then stop it or ask for status.
-		# Those other functions, even if received earlier on the server than the
-		# chat completion it-self, could simply wait for the chat completion to start.
-		#
-		# Clients however need to additionally have their host name passed into chat
-		# completion so as to dis-ambiguity multiple clients with the same key passed.
-		#
-		# It will be client error if they pass same key concurrently with ambiguity.
 		chat = list(messages)
 		all_requirements_met = False
 		while not all_requirements_met:
