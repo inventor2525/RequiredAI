@@ -21,12 +21,43 @@ class RequiredAISystem:
 		
 		ModelManager(ModelConfigs.from_dict(self.config["models"]))
 		RequiredAISystem.singleton = self
+		self.response_map: Dict[str, Dict[str, Any]] = {}
 	
-	def chat_completions(self, model_name:str, requirements:List[Requirement], messages:List[dict], params:dict={}) -> dict:
+	def chat_completions(self, model_name:str, requirements:List[Requirement], messages:List[dict], params:dict={}, key: Optional[str] = None) -> dict:
+		response = {
+			"id": "reqai-" + self._generate_id(),
+			"object": "chat.completion",
+			"created": self._get_timestamp(),
+			"model": model_name,
+			"choices": [{
+				"prospects": []
+			}],
+			"model_config": ModelManager.singleton().model_configs[model_name].as_dict(),
+			"done":False
+		}
+		def errors(response:dict=response) -> list:
+			c = response['choices'][0]
+			if 'errors' not in response:
+				c['errors'] = []
+			return c['errors']
+		prospective_responses = response["choices"][0]["prospects"]
+		
+		if key:
+			self.response_map[key] = response
+		
 		# Generate a first draft response that we'll
 		# check the requirements against after:
 		print("Generating prospect...")
-		prospective_response = ModelManager.singleton().complete_with_model(model_name, messages, params)
+		try:
+			prospective_response = ModelManager.singleton().complete_with_model(model_name, messages, params)
+		except Exception as e:
+			response["choices"][0]["finish_reason"] = f"Error generating prospect"
+			errors().append({
+				'exception':e,
+				'exception_type':type(e).__name__,
+				'response':prospective_response
+			})
+			return response
 		
 		# Start a log for the current prospective message
 		# that will be attached to it as a audit trail for
@@ -42,8 +73,22 @@ class RequiredAISystem:
 				**last_element_fields
 			})
 		
+		def set_choice(prospect:dict, response:dict=response) -> None:
+			choice = response["choices"][0]
+			choice["id"] = get_id(prospect)
+			choice["message"] = get_msg(prospect)
+			choice["finish_reason"] = get_finish_reason(prospect)
+		
+		def stop(response:dict=response) -> bool:
+			if response.get('should_stop', False):
+				choice = response["choices"][0]
+				choice["finish_reason"] = 'Stopped by client'
+				return True
+			return False
+		
 		eval_log = add_eval_log_to(prospective_response)
-		prospective_responses = [prospective_response]
+		prospective_responses.append(prospective_response)
+		set_choice(prospective_response)
 		
 		# Iteratively re-draft the response until all requirements are met:
 		# (The only time this should ever stop is if the user stops it!)
@@ -86,19 +131,43 @@ class RequiredAISystem:
 			failed_req = None
 			all_requirements_met = True
 			for req in requirements:
+				if stop(): # Stop though if the client told us to.
+					end_prospects_eval_log(eval_log, False, {
+						'checked_all_requirements':False
+					})
+					if key in self.response_map:
+						del self.response_map[key]
+					return response
+				
 				print(f"Evaluating {req.name}")
-				req_evaluation = req.evaluate(conversation)
-				eval_log.append(req_evaluation.evaluation_log)
-				if not req_evaluation:
-					print(f"{req.name} failed!")
-					all_requirements_met = False
-					failed_req = req
-					break
+				try:
+					req_evaluation = req.evaluate(conversation)
+					eval_log.append(req_evaluation.evaluation_log)
+					if not req_evaluation:
+						print(f"{req.name} failed!")
+						all_requirements_met = False
+						failed_req = req
+						break
+				except Exception as e:
+					errors().append({
+						'exception':e,
+						'exception_type':type(e).__name__,
+						'requirement':req.name
+					})
+					response["choices"][0]["finish_reason"] = f"Error evaluating requirement"
+					return response
 			
 			# If all requirements are met, we're done
 			if all_requirements_met:
-				end_prospects_eval_log(eval_log, True)
+				end_prospects_eval_log(eval_log, True, {
+					'checked_all_requirements':True
+				})
 				break
+			
+			if stop(): # Stop if the client told us to.
+				if key in self.response_map:
+					del self.response_map[key]
+				return response
 			
 			# Else, Create a response revision prompt:
 			revision_prompt = {
@@ -126,34 +195,43 @@ class RequiredAISystem:
 				"messages": revision_conversation,
 				"params": params
 			}
-			new_response = ModelManager.singleton().complete_with_model(**revision_input)
+			try:
+				new_response = ModelManager.singleton().complete_with_model(**revision_input)
+			except Exception as e:
+				response["choices"][0]["finish_reason"] = f"Error generating prospect"
+				errors().append({
+					'exception':e,
+					'exception_type':type(e).__name__,
+					'response':prospective_response
+				})
+				return response
 			
 			# Update the prospective response for the next
 			# iteration, keeping an audit trail of our attempts:
 			end_prospects_eval_log(eval_log, False, {
+				'checked_all_requirements':True,
 				"revision_input":revision_input,
 				"revision_id":get_id(new_response)
 			})
 			prospective_response = new_response
 			eval_log = add_eval_log_to(prospective_response)
 			prospective_responses.append(prospective_response)
+			set_choice(prospective_response)
 		
-		# Construct and return the final response
-		response = {
-			"id": "reqai-" + self._generate_id(),
-			"object": "chat.completion",
-			"created": self._get_timestamp(),
-			"model": model_name,
-			"choices": [{
-				"id":get_id(prospective_response),
-				"message": get_msg(prospective_response),
-				"finish_reason": get_finish_reason(prospective_response),
-				"prospects":prospective_responses
-			}],
-			"model_config": ModelManager.singleton().model_configs[model_name].as_dict()
-		}
-		
+		response["done"] = True
+		if key in self.response_map:
+			del self.response_map[key]
 		return response
+	
+	def chat_completion_status(self, key: str) -> Dict[str, Any]:
+		if key in self.response_map:
+			return self.response_map[key]
+		else:
+			return {"error": "key not found"}
+	
+	def stop_chat_completion(self, key: str):
+		if key in self.response_map:
+			self.response_map[key]['should_stop'] = True
 	
 	def _generate_id(self) -> str:
 		"""Generate a unique ID for the response."""
