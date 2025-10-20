@@ -256,7 +256,25 @@ class FallbackModel:
 	Note that FallbackModel is a 'model' in the sense that
 	it too can have it's own requirements, input config, output
 	tags etc, but it does not replace those parameters in any
-	of the models it uses.
+	of the models it uses. Those models will still filter their
+	input (which will be filtered by fallback model), and run
+	their own requirements first, which fallback model will then
+	validate with it's requirements, and both model's tags will
+	be applied to the output.
+	
+	Which one of the models in the list that generates FallbackModel's
+	final output will be ultimately determined by which ever one responds
+	first with a valid non-error response that meets it's own requirements
+	and that of FallbackModel. And it's tags will be (along with
+	FallbackModel's) will be the ones used on the main output.
+	
+	Other attempts at completion using any of the other models in
+	the list that eventually failed to provide a non-error response
+	that met all requirements, will also be included, but mostly
+	for debug and auditing purposes, not to be used as the primary
+	response. Those traces will still of course be tagged, but by
+	each of the inner models that generated them, not the one that
+	ultimately 'won'.
 	'''
 	name: str
 	'''Name this group of models will be referred to as by RequiredAI.'''
