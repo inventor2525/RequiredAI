@@ -53,12 +53,32 @@ class RequiredAIServer:
 			model_name = data.get("model")
 			requirements = Requirements.from_dict(data.get("requirements", []))
 			messages = data.get("messages", [])
-			params = {k: v for k, v in data.items() if k not in set(["model", "requirements", "messages"])}
+			key = data.get("key", None)
+			initial_response = data.get("initial_response", None)
+			params = {k: v for k, v in data.items() if k not in set(["model", "requirements", "messages", "key", "initial_response"])}
 			
-			response = self.system.chat_completions(model_name, requirements, messages, params)
+			response = self.system.chat_completions(model_name, requirements, messages, params, key, initial_response)
 			if "error" in response:
 				return jsonify(response), 400
 			return jsonify(response)
+		
+		@self.app.route('/v1/chat/completion/status/<key>', methods=['GET'])
+		def chat_completion_status(key):
+			try:
+				response = self.system.chat_completion_status(key)
+				if "error" in response:
+					return jsonify(response), 404
+				return jsonify(response)
+			except Exception as e:
+				return jsonify({"error": str(e)}), 500
+		
+		@self.app.route('/v1/chat/completion/stop/<key>', methods=['POST'])
+		def stop_chat_completion(key):
+			try:
+				self.system.stop_chat_completion(key)
+				return jsonify({"message": f"Stopped completion {key}"})
+			except Exception as e:
+				return jsonify({"error": str(e)}), 500
 		
 		@self.app.route('/v1/models/add', methods=['POST'])
 		def add_model():

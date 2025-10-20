@@ -29,6 +29,8 @@ class RequiredAIClient:
 		model: str,
 		messages: List[Dict[str, Any]],
 		requirements: List[Requirement]=[],
+		key: Optional[str] = None,
+		initial_response: Optional[Dict[str, Any]] = None,
 		**kwargs
 	) -> Dict[str, Any]:
 		"""
@@ -40,6 +42,13 @@ class RequiredAIClient:
 			requirements: The requirements to apply to the response
 				(These will be in addition to any the model has built
 				in and will take priority over them)
+			key: Optional key for tracking/persisting the completion
+			initial_response: Optional initial response to continue from.
+				The last prospect in this will be used as the current prospect
+				that we will re-evaluate the requirements for. Only use this
+				if you have requirements that may have a stochastic return
+				that you want to re-run, like asking a llm if a requirement
+				is met.
 			**kwargs: Additional parameters to pass to the API
 			
 		Returns:
@@ -50,11 +59,50 @@ class RequiredAIClient:
 		payload = {
 			"model": model,
 			"messages": messages,
-			"requirements": Requirements.to_dict(requirements),
-			**kwargs
+			"requirements": Requirements.to_dict(requirements)
 		}
+		if key is not None:
+			payload["key"] = key
+		if initial_response is not None:
+			payload["initial_response"] = initial_response
+		if kwargs:
+			payload.update(kwargs)
 		
 		response = self.session.post(endpoint, json=payload)
+		response.raise_for_status()
+		
+		return response.json()
+	
+	def get_completion_status(self, key: str) -> Dict[str, Any]:
+		"""
+		Get the status of a completion by key.
+		
+		Args:
+			key: The key of the completion to check
+			
+		Returns:
+			The status response as a dictionary
+		"""
+		endpoint = f"{self.base_url}/v1/chat/completion/status/{key}"
+		
+		response = self.session.get(endpoint)
+		response.raise_for_status()
+		
+		return response.json()
+	
+	def stop_completion(self, key: str) -> Dict[str, Any]:
+		"""
+		Stop a running completion by key.
+		
+		Args:
+			key: The key of the completion to stop
+			
+		Returns:
+			The API response as a dictionary
+		"""
+		endpoint = f"{self.base_url}/v1/chat/completion/stop/{key}"
+		
+		response = self.session.post(endpoint)
 		response.raise_for_status()
 		
 		return response.json()

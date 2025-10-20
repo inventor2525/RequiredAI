@@ -180,7 +180,7 @@ class InputConfig:
 
 from dataclasses_json import config
 
-all_model_configs:Dict[str, 'ModelConfig'] = {}
+all_model_configs:Dict[str, 'ModelConfig'|'FallbackModel'] = {}
 
 @json_dataclass
 class ModelConfig:
@@ -189,7 +189,7 @@ class ModelConfig:
 	'''
 	
 	name: str
-	'''Name this model will be referred to by the RequiredAI package.'''
+	'''Name this model will be referred to as by RequiredAI.'''
 	
 	provider: str
 	'''Company/framework name that facilitates this model. eg, groq, RequiredAI, gemini, anthropic, etc.'''
@@ -240,6 +240,50 @@ def InheritedModel(name:str, base_model:ModelConfig, requirements:List[Requireme
 		input_config=input_config,
 		output_tags=output_tags
 	)
+
+@json_dataclass
+class ModelRetryParameters:
+	model_name:str
+	max_retry:int
+	delay_between_retry:float
+	
+@json_dataclass
+class FallbackModel:
+	'''
+	A 'model' that is actually a list of models with retry
+	parameters for each, facilitating a more stable endpoint.
+	
+	Note that FallbackModel is a 'model' in the sense that
+	it too can have it's own requirements, input config, output
+	tags etc, but it does not replace those parameters in any
+	of the models it uses.
+	'''
+	name: str
+	'''Name this group of models will be referred to as by RequiredAI.'''
+	
+	models:List[ModelRetryParameters]
+	'''List of inner models we will cycle between as they time out or repeatedly fail.'''
+	
+	requirements: Optional[List[Requirement]] = field(default=None, metadata=config(
+			decoder=Requirements.from_dict, encoder=Requirements.to_dict
+		)
+	)
+	'''Any requirements you wish this model to follow. Any response that does not follow any requirement will be re-drafted and all requirements checked again.'''
+	
+	input_config: None | InputConfig | List[InputConfig] = field(default=None)
+	'''This controls how this model selects from it's input. Filter by role, tag, message index or slicing.'''
+	
+	output_tags: List[str] = field(default_factory=list)
+	'''A list of tags that will be added to each message produced by the model.'''
+	
+	default_params: dict = field(default_factory={})
+	'''
+	Parameters that will be passed to the api provider. Any that you pass
+	into a completion endpoint will override these on a per key basis.
+	'''
+	
+	def __post_init__(self):
+		all_model_configs[self.name] = self
 
 class ModelConfigs:
 	"""
