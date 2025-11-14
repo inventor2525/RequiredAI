@@ -1,9 +1,6 @@
 from RequiredAI.client import RequiredAIClient
 from RequiredAI.ModelConfig import ModelConfig
 
-client = RequiredAIClient(
-	base_url="http://localhost:5432"
-)
 llama_70b = ModelConfig(
 	name="Llama 70b 3.3",
 	provider="groq",
@@ -14,6 +11,11 @@ gemini_flash_lite = ModelConfig(
 	provider="gemini",
 	provider_model="gemini-2.5-flash-lite"
 )
+
+client = RequiredAIClient(
+	base_url="http://localhost:5432"
+)
+
 # response = client.create_completion(gemini_flash_lite.name, [
 # 	{
 # 		'role':'user',
@@ -25,9 +27,11 @@ gemini_flash_lite = ModelConfig(
 # 	},
 # 	{
 # 		'role':'user',
-# 		'content':'nothing... Just say Hi'
+# 		'content':'nothing... Just say Hi and tell me like 2 sentences describing what I sent you.'
 # 	}
 # ])
+# print(response['choices'][0]['message']['content'])
+
 while True:
 	response = client.create_completion(llama_70b.name, [
 		{

@@ -180,7 +180,7 @@ class InputConfig:
 
 from dataclasses_json import config
 
-all_model_configs:Dict[str, 'ModelConfig'|'FallbackModel'] = {}
+all_model_configs:Dict[str, Union['ModelConfig', 'FallbackModel']] = {}
 
 @json_dataclass
 class ModelConfig:
@@ -212,7 +212,7 @@ class ModelConfig:
 	output_tags: List[str] = field(default_factory=list)
 	'''A list of tags that will be added to each message produced by the model.'''
 	
-	default_params: dict = field(default_factory={})
+	default_params: dict = field(default_factory=dict)
 	'''
 	Parameters that will be passed to the api provider. Any that you pass
 	into a completion endpoint will override these on a per key basis.
@@ -294,7 +294,7 @@ class FallbackModel:
 	output_tags: List[str] = field(default_factory=list)
 	'''A list of tags that will be added to each message produced by the model.'''
 	
-	default_params: dict = field(default_factory={})
+	default_params: dict = field(default_factory=dict)
 	'''
 	Parameters that will be passed to the api provider. Any that you pass
 	into a completion endpoint will override these on a per key basis.

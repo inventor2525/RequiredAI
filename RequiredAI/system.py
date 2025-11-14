@@ -33,7 +33,7 @@ class RequiredAISystem:
 				"choices": [{
 					"prospects": []
 				}],
-				"model_config": ModelManager.singleton().model_configs[model_name].as_dict(),
+				"model_config": ModelManager.singleton().model_configs[model_name].to_dict(),
 				"done":False
 			}
 		else:
@@ -42,7 +42,7 @@ class RequiredAISystem:
 				"id": "reqai-" + self._generate_id(),
 				"created": self._get_timestamp(),
 				"model": model_name,
-				"model_config": ModelManager.singleton().model_configs[model_name].as_dict(),
+				"model_config": ModelManager.singleton().model_configs[model_name].to_dict(),
 				'initial_draft_response':initial_response['id'],
 				"done":False
 			})
