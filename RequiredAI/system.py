@@ -86,7 +86,12 @@ class RequiredAISystem:
 			# check the requirements against after:
 			print("Generating prospect...")
 			try:
-				prospective_response = ModelManager.singleton().complete_with_model(model_name, messages, params)
+				completion_model = ModelManager.singleton().get_provider(model_name)
+				prospective_response = ModelManager.singleton().complete_with_model(
+					model_name,
+					InputConfig.select_with(messages, completion_model.config.input_config),
+					params
+				)
 			except Exception as e:
 				response["choices"][0]["finish_reason"] = f"Error generating prospect"
 				errors().append({
