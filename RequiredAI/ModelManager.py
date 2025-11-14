@@ -2,9 +2,9 @@
 Model manager for RequiredAI.
 """
 
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Union
 from .providers import BaseModelProvider
-from .ModelConfig import ModelConfig
+from .ModelConfig import ModelConfig, FallbackModel
 
 class ModelManager:
 	"""Manager for model providers."""
@@ -16,12 +16,12 @@ class ModelManager:
 		"""Get the singleton instance of ModelManager."""
 		return ModelManager._instance
 	
-	def __init__(self, model_configs: List[ModelConfig]):
+	def __init__(self, model_configs: List[Union[ModelConfig, FallbackModel]]):
 		"""
 		Initialize the model manager.
 		
 		Args:
-			config: The server configuration
+			model_configs: List of ModelConfig or FallbackModel
 		"""
 		self.model_configs = {config.name:config for config in model_configs}
 		self.provider_instances = {}
@@ -87,4 +87,4 @@ class ModelManager:
 			Estimated token count
 		"""
 		provider = self.get_provider(model_name)
-		return provider.estimate_tokens(text, model_name)
+		return provider.estimate_tokens(text)

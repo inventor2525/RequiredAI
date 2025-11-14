@@ -300,6 +300,10 @@ class FallbackModel:
 	into a completion endpoint will override these on a per key basis.
 	'''
 	
+	@property
+	def provider(self) -> str:
+		return "Fallback"
+	
 	def __post_init__(self):
 		all_model_configs[self.name] = self
 

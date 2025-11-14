@@ -1,7 +1,7 @@
 from typing import List, Dict, Any, Optional, ClassVar, Tuple
 import json
 from .Requirement import Requirements, Requirement, RequirementResult
-from .ModelConfig import InputConfig, ModelConfigs
+from .ModelConfig import InputConfig, ModelConfigs, FallbackModel
 from .ModelManager import ModelManager
 from .helpers import *
 
@@ -19,7 +19,7 @@ class RequiredAISystem:
 		self.config = config
 		self.revise_prompt_template = "Your previous response did not meet the following requirement: {requirement_prompt} Please revise your response to meet this requirement."
 		
-		ModelManager(ModelConfigs.from_dict(self.config["models"]))
+		ModelManager(ModelConfigs.from_dict(self.config["models"]) + [FallbackModel.from_dict(fbm) for fbm in self.config["fallback_models"]])
 		RequiredAISystem.singleton = self
 		self.response_map: Dict[str, Dict[str, Any]] = {}
 	

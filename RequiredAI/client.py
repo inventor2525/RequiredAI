@@ -3,7 +3,7 @@ Client API for RequiredAI.
 """
 
 from typing import List, Dict, Any, Optional
-from .ModelConfig import ModelConfig, all_model_configs
+from .ModelConfig import ModelConfig, FallbackModel, all_model_configs
 from .Requirement import Requirement, Requirements
 import requests
 import json
@@ -22,7 +22,10 @@ class RequiredAIClient:
 		self.session = requests.Session()
 		
 		for model_name, model_config in all_model_configs.items():
-			self.add_model(model_config)
+			if isinstance(model_config, ModelConfig):
+				self.add_model(model_config)
+			elif isinstance(model_config, FallbackModel):
+				self.add_fallback_model(model_config)
 	
 	def create_completion(
 		self,
@@ -120,6 +123,23 @@ class RequiredAIClient:
 		endpoint = f"{self.base_url}/v1/models/add"
 		
 		response = self.session.post(endpoint, json=model.to_dict())
+		response.raise_for_status()
+		
+		return response.json()
+	
+	def add_fallback_model(self, fallback: FallbackModel) -> Dict[str, Any]:
+		"""
+		Send a fallback model configuration to the server to be added to the ModelManager.
+		
+		Args:
+			fallback: The FallbackModel instance containing the configuration
+			
+		Returns:
+			The API response as a dictionary
+		"""
+		endpoint = f"{self.base_url}/v1/models/fallback/add"
+		
+		response = self.session.post(endpoint, json=fallback.to_dict())
 		response.raise_for_status()
 		
 		return response.json()
