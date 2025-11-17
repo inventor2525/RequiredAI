@@ -5,6 +5,7 @@ from typing import get_origin, get_args, Annotated, ForwardRef, overload, Iterat
 from enum import Enum
 import collections
 import uuid
+import dataclasses
 
 T = TypeVar('T')
 K = TypeVar('K')
@@ -202,6 +203,87 @@ def json_dataclass(*args, **kwargs) -> Callable[[Type[T]], Type[T]] | Type[T]:
 	return wrap
 
 def _process_class(cls: Type[T], id_type:IDType=MISSING, has_id:bool=MISSING, auto_id_name:str=_default_auto_id_name, user_id_name:str=None, small_id:bool=_default_use_small_ids, exclude:List[str|Type]=[collections.abc.Callable]) -> Type[T]:
+	# Flatten and reorder fields from inheritance chain so non-default fields come before default fields,
+	# preserving relative order within each group.
+	# Collect own fields as Field objects
+	own_annots = cls.__annotations__.copy() if hasattr(cls, '__annotations__') else {}
+	own_fields: List[Field] = []
+	for name, typ in own_annots.items():
+		dflt = getattr(cls, name, dataclasses.MISSING)
+		if isinstance(dflt, Field):
+			f = dflt
+		else:
+			f = field(default=dflt) if dflt is not dataclasses.MISSING else field(default=dataclasses.MISSING)
+		f.name = name
+		f.type = typ
+		own_fields.append(f)
+
+	# Collect inherited fields, avoiding duplicates
+	inherited_fields: List[Field] = []
+	seen = set()
+	for b in reversed(cls.__mro__[1:]):
+		if hasattr(b, '__dataclass_fields__'):
+			for name, f in b.__dataclass_fields__.items():
+				if name not in seen:
+					inherited_fields.append(f)
+					seen.add(name)
+
+	# Total fields in current order
+	total_fields = inherited_fields + own_fields
+
+	# Separate into required (no default) and optional, preserving order
+	required_fields = [f for f in total_fields if f.default is dataclasses.MISSING and f.default_factory is dataclasses.MISSING]
+	optional_fields = [f for f in total_fields if f.default is not dataclasses.MISSING or f.default_factory is not dataclasses.MISSING]
+
+	# Reordered
+	reordered_fields = required_fields + optional_fields
+
+	# Clear own attributes and annotations
+	for name in list(cls.__dict__.keys()):
+		if name in own_annots and hasattr(cls, name):
+			delattr(cls, name)
+	cls.__annotations__ = {}
+
+	# Temporarily remove __dataclass_fields__ from direct bases to prevent inheritance during dataclass call
+	saved_dataclass_fields = {}
+	for b in cls.__bases__:
+		if hasattr(b, '__dataclass_fields__'):
+			saved_dataclass_fields[b] = b.__dataclass_fields__
+			delattr(b, '__dataclass_fields__')
+
+	# Set reordered fields on cls
+	for f in reordered_fields:
+		cls.__annotations__[f.name] = f.type
+		# Create a new Field to avoid sharing issues
+		kw_args = {
+			'init': f.init,
+			'repr': f.repr,
+			'hash': f.hash,
+			'compare': f.compare,
+			'metadata': dict(f.metadata) if f.metadata else None,
+		}
+		if hasattr(f, 'kw_only'):
+			kw_args['kw_only'] = f.kw_only
+		new_f = field(
+			default=f.default if f.default is not dataclasses.MISSING else dataclasses.MISSING,
+			default_factory=f.default_factory if f.default_factory is not dataclasses.MISSING else dataclasses.MISSING,
+			**kw_args
+		)
+		# Set field if it has any non-default configuration
+		if (
+			f.default is not dataclasses.MISSING or
+			f.default_factory is not dataclasses.MISSING or
+			not f.init or
+			not f.repr or
+			f.hash is not None or
+			not f.compare or
+			f.metadata or
+			(hasattr(f, 'kw_only') and f.kw_only)
+		):
+			setattr(cls, f.name, new_f)
+
+	# Proceed with original processing
+
 	# Figure out if we have an id, and what type we have if so:
 	has_id = (
 		has_id
@@ -377,6 +459,10 @@ def _process_class(cls: Type[T], id_type:IDType=MISSING, has_id:bool=MISSING, au
 	
 	cls = dataclass(cls)
 	cls = dataclass_json(cls)
+
+	# Restore saved __dataclass_fields__ on bases
+	for b, fields in saved_dataclass_fields.items():
+		setattr(b, '__dataclass_fields__', fields)
 
 	return cls
 
