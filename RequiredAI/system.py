@@ -3,6 +3,7 @@ import json
 from .Requirement import Requirements, Requirement, RequirementResult
 from .ModelConfig import InputConfig, ModelConfigs, FallbackModel
 from .ModelManager import ModelManager
+from datetime import datetime
 from .helpers import *
 
 class RequiredAISystem:
@@ -84,7 +85,8 @@ class RequiredAISystem:
 		if len(prospective_responses) == 0:
 			# Generate a first draft response that we'll
 			# check the requirements against after:
-			print("Generating prospect...")
+			prospect_dt = datetime.now()
+			print(f"\n  {model_name} Generating first prospect ({prospect_dt})...")
 			try:
 				completion_model = ModelManager.singleton().get_provider(model_name)
 				prospective_response = ModelManager.singleton().complete_with_model(
@@ -92,7 +94,9 @@ class RequiredAISystem:
 					InputConfig.select_with(messages, completion_model.config.input_config),
 					params
 				)
+				print_logging_time("  Prospect generated", prospect_dt)
 			except Exception as e:
+				print_logging_time(f"  Error generating prospect:\n{e}", prospect_dt)
 				response["choices"][0]["finish_reason"] = f"Error generating prospect"
 				errors().append({
 					'exception':e,
@@ -137,16 +141,20 @@ class RequiredAISystem:
 						del self.response_map[key]
 					return response
 				
-				print(f"Evaluating {req.name}")
+				req_dt = datetime.now()
+				print(f"  Evaluating {req.name} ({req_dt})")
 				try:
 					req_evaluation = req.evaluate(conversation)
 					eval_log.append(req_evaluation.evaluation_log)
 					if not req_evaluation:
-						print(f"{req.name} failed!")
+						print_logging_time(f"  {req.name} failed!", req_dt)
 						all_requirements_met = False
 						failed_req = req
 						break
+					else:
+						print_logging_time(f"  {req.name} Passed!", req_dt)
 				except Exception as e:
+					print_logging_time(f"  Error evaluating requirement '{req.name}':\n{e}", req_dt)
 					errors().append({
 						'exception':e,
 						'exception_type':type(e).__name__,
@@ -193,9 +201,13 @@ class RequiredAISystem:
 				"messages": revision_conversation,
 				"params": params
 			}
+			prospect_dt = datetime.now()
+			print(f"  Generating new prospect ({prospect_dt})...")
 			try:
 				new_response = ModelManager.singleton().complete_with_model(**revision_input)
+				print_logging_time("  Prospect generated", prospect_dt)
 			except Exception as e:
+				print_logging_time(f"  Error generating prospect:\n{e}", prospect_dt)
 				response["choices"][0]["finish_reason"] = f"Error generating prospect"
 				errors().append({
 					'exception':e,

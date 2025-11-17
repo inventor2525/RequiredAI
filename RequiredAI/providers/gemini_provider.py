@@ -10,7 +10,6 @@ from google import genai
 from google.genai import types
 from ..ModelConfig import ModelConfig
 from ..helpers import remap
-from datetime import datetime
 
 from . import BaseModelProvider, provider, ProviderException
 
@@ -78,13 +77,11 @@ class GeminiProvider(BaseModelProvider):
 		# Make the API call
 		response = None
 		try:
-			print(datetime.now())
 			response = self.client.models.generate_content(
 				model=provider_model_name,
 				contents=gemini_contents,
 				config=generation_config
 			)
-			print(datetime.now())
 			
 			# Convert Gemini response to OpenAI-like format
 			if response.candidates:

@@ -1,4 +1,5 @@
 from typing import Dict, List
+from datetime import datetime
 
 def get_id(response :Dict[str,str]) -> str:
 	'''
@@ -47,3 +48,7 @@ def remap(d:dict, old_key:str, new_key:str):
 	if old_key in d:
 		d[new_key] = d[old_key]
 		del d[old_key]
+
+def print_logging_time(text:str, start_time:datetime):
+	seconds_to_complete = (datetime.now()-start_time).total_seconds()
+	print(f"{text} ({seconds_to_complete:.2f}s)")
