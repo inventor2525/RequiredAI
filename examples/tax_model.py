@@ -1,5 +1,5 @@
 from RequiredAI.client import RequiredAIClient
-from RequiredAI.ModelConfig import ModelConfig, InheritedModel
+from RequiredAI.ModelConfig import ModelConfig, InheritedModel, SimpleFallbackModel
 from RequiredAI.RequirementTypes import WrittenRequirement
 from datetime import datetime
 
@@ -8,26 +8,50 @@ llama_70b = ModelConfig(
 	provider="groq",
 	provider_model="llama-3.3-70b-versatile"
 )
+gpt_oss_120b = ModelConfig(
+	name="GPT OSS 120B",
+	provider="groq",
+	provider_model="openai/gpt-oss-120b"
+)
 gemini_flash_lite = ModelConfig(
 	name="Gemini 2.5 Flash Lite",
 	provider="gemini",
 	provider_model="gemini-2.5-flash-lite"
 )
-
+any_sorta_smart = SimpleFallbackModel(
+	name="Any Sorta Smart",
+	models=[
+		gemini_flash_lite, llama_70b, gpt_oss_120b
+	]
+)
 NDA_model = InheritedModel(
-	'NDA', gemini_flash_lite, requirements=[
+	'NDA', any_sorta_smart, requirements=[
 		WrittenRequirement(
 			name='VT100 NDA',
-			evaluation_model=gemini_flash_lite.name,
+			evaluation_model=any_sorta_smart.name,
 			value=[
 				"Do not mention or discuss VT100 explicitly."
 			]
 		),
 		WrittenRequirement(
 			name='Terminal Emulation NDA',
-			evaluation_model=gemini_flash_lite.name,
+			evaluation_model=any_sorta_smart.name,
 			value=[
 				"Do not mention or discuss the *function* or the *mechanisms* of terminal emulation."
+			]
+		),
+		WrittenRequirement(
+			name='No NDA disclosure',
+			evaluation_model=any_sorta_smart.name,
+			value=[
+				"Do not explain to the user what it is that you are not aloud to explain, or apologize that you are not aloud to explain it."
+			]
+		),
+		WrittenRequirement(
+			name='Be helpful',
+			evaluation_model=any_sorta_smart.name,
+			value=[
+				"Answer the users request."
 			]
 		)
 	]

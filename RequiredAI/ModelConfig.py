@@ -306,6 +306,12 @@ class FallbackModel:
 	
 	def __post_init__(self):
 		all_model_configs[self.name] = self
+		
+def SimpleFallbackModel(name:str, models:List[ModelConfig], max_retries:int=3, delay_between_retries:float=1) -> FallbackModel:
+	return FallbackModel(
+		name=name,
+		models=[ModelRetryParameters(m.name, max_retries, delay_between_retries) for m in models]
+	)
 
 class ModelConfigs:
 	"""
