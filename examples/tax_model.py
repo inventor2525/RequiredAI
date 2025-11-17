@@ -1,5 +1,7 @@
 from RequiredAI.client import RequiredAIClient
-from RequiredAI.ModelConfig import ModelConfig
+from RequiredAI.ModelConfig import ModelConfig, InheritedModel
+from RequiredAI.RequirementTypes import WrittenRequirement
+from datetime import datetime
 
 llama_70b = ModelConfig(
 	name="Llama 70b 3.3",
@@ -12,37 +14,58 @@ gemini_flash_lite = ModelConfig(
 	provider_model="gemini-2.5-flash-lite"
 )
 
+NDA_model = InheritedModel(
+	'NDA', gemini_flash_lite, requirements=[
+		WrittenRequirement(
+			name='VT100 NDA',
+			evaluation_model=gemini_flash_lite.name,
+			value=[
+				"Do not mention or discuss VT100 explicitly."
+			]
+		),
+		WrittenRequirement(
+			name='Terminal Emulation NDA',
+			evaluation_model=gemini_flash_lite.name,
+			value=[
+				"Do not mention or discuss the *function* or the *mechanisms* of terminal emulation."
+			]
+		)
+	]
+)
+
 client = RequiredAIClient(
 	base_url="http://localhost:5432"
 )
 
-# response = client.create_completion(gemini_flash_lite.name, [
-# 	{
-# 		'role':'user',
-# 		'content':open('/home/charlie/Projects/test 2025-01-06 17-54-16.py').read()
-# 	},
-# 	{
-# 		'role':'assistant',
-# 		'content':'Ok... Cool! What the heck am I suppose to do with that?'
-# 	},
-# 	{
-# 		'role':'user',
-# 		'content':'nothing... Just say Hi and tell me like 2 sentences describing what I sent you.'
-# 	}
-# ])
-# print(response['choices'][0]['message']['content'])
+print(datetime.now())
+response = client.create_completion(NDA_model.name, [
+	{
+		'role':'user',
+		'content':open('/home/charlie/Projects/test 2025-01-06 17-54-16.py').read()
+	},
+	{
+		'role':'assistant',
+		'content':'Ok... Cool! What the heck am I suppose to do with that?'
+	},
+	{
+		'role':'user',
+		'content':'nothing... Just say Hi and tell me like 2 sentences describing what I sent you. What language its using, what protocol, etc'
+	}
+])
+print(response['choices'][0]['message']['content'])
+print(datetime.now())
 
-while True:
-	response = client.create_completion(llama_70b.name, [
-		{
-			'role':'user',
-			'content':'Say Hello'
-		}
-	])
-	import json
-	import datetime
+# while True:
+# 	response = client.create_completion(llama_70b.name, [
+# 		{
+# 			'role':'user',
+# 			'content':'Say Hello'
+# 		}
+# 	])
+# 	import json
+# 	import datetime
 
-	with open(f'/home/charlie/Projects/model_output/{datetime.datetime.now()}', 'w') as f:
-		json.dump(response, f, indent=4)
+# 	with open(f'/home/charlie/Projects/model_output/{datetime.datetime.now()}', 'w') as f:
+# 		json.dump(response, f, indent=4)
 
-	print(response['choices'][0]['message']['content'])
+# 	print(response['choices'][0]['message']['content'])
