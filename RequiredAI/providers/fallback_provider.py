@@ -70,7 +70,7 @@ class FallbackProvider(BaseModelProvider):
 						time.sleep(retry_params.delay_between_retry)
 
 		# If all attempts fail, raise an error response with attempts
-		raise ProviderException(FallbackProvider.provider_name, e, {
+		raise ProviderException(FallbackProvider.provider_name, None, {
 			"id": "fallback-error",
 			"object": "chat.completion",
 			"created": int(time.time()),

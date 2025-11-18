@@ -2,6 +2,7 @@ from RequiredAI.client import RequiredAIClient
 from RequiredAI.ModelConfig import ModelConfig, InheritedModel, SimpleFallbackModel
 from RequiredAI.RequirementTypes import WrittenRequirement
 from datetime import datetime
+import json
 
 llama_70b = ModelConfig(
 	name="Llama 70b 3.3",
@@ -65,7 +66,7 @@ print(datetime.now())
 response = client.create_completion(NDA_model.name, [
 	{
 		'role':'user',
-		'content':open('/home/charlie/Projects/test 2025-01-06 17-54-16.py').read()
+		'content':open('/home/charlie/Projects/large_file.py').read()
 	},
 	{
 		'role':'assistant',
@@ -76,6 +77,7 @@ response = client.create_completion(NDA_model.name, [
 		'content':'nothing... Just say Hi and tell me like 2 sentences describing what I sent you. What language its using, what protocol, etc'
 	}
 ])
+print(json.dumps(response, indent=4),"\n\n")
 print(response['choices'][0]['message']['content'])
 print(datetime.now())
 

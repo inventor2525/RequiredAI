@@ -5,6 +5,7 @@ from .ModelConfig import InputConfig, ModelConfigs, FallbackModel
 from .ModelManager import ModelManager
 from datetime import datetime
 from .helpers import *
+import traceback
 
 class RequiredAISystem:
 	"""System for handling RequiredAI chat completions."""
@@ -99,9 +100,9 @@ class RequiredAISystem:
 				print_logging_time(f"  Error generating prospect:\n{e}", prospect_dt)
 				response["choices"][0]["finish_reason"] = f"Error generating prospect"
 				errors().append({
-					'exception':e,
+					'exception':str(e),
 					'exception_type':type(e).__name__,
-					'response':prospective_response
+					'traceback':"\n".join(traceback.format_exception(e))
 				})
 				return response
 			
@@ -156,9 +157,10 @@ class RequiredAISystem:
 				except Exception as e:
 					print_logging_time(f"  Error evaluating requirement '{req.name}':\n{e}", req_dt)
 					errors().append({
-						'exception':e,
+						'exception':str(e),
 						'exception_type':type(e).__name__,
-						'requirement':req.name
+						'requirement':req.name,
+						'traceback':"\n".join(traceback.format_exception(e))
 					})
 					response["choices"][0]["finish_reason"] = f"Error evaluating requirement"
 					return response
@@ -210,9 +212,9 @@ class RequiredAISystem:
 				print_logging_time(f"  Error generating prospect:\n{e}", prospect_dt)
 				response["choices"][0]["finish_reason"] = f"Error generating prospect"
 				errors().append({
-					'exception':e,
+					'exception':str(e),
 					'exception_type':type(e).__name__,
-					'response':prospective_response
+					'traceback':"\n".join(traceback.format_exception(e))
 				})
 				return response
 			
