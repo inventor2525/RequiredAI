@@ -120,6 +120,7 @@ class RequiredAIClient:
 		Returns:
 			The API response as a dictionary
 		"""
+		model.client = self
 		endpoint = f"{self.base_url}/v1/models/add"
 		
 		response = self.session.post(endpoint, json=model.to_dict())
@@ -137,6 +138,7 @@ class RequiredAIClient:
 		Returns:
 			The API response as a dictionary
 		"""
+		fallback.client = self
 		endpoint = f"{self.base_url}/v1/models/fallback/add"
 		
 		response = self.session.post(endpoint, json=fallback.to_dict())
