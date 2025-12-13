@@ -2,9 +2,10 @@
 Client API for RequiredAI.
 """
 
-from typing import List, Dict, Any, Optional
-from .ModelConfig import ModelConfig, FallbackModel, all_model_configs
+from typing import List, Dict, Any, Optional, Union
+from .ModelConfig import ModelConfig, FallbackModel, all_model_configs, ModelRetryParameters, InputConfig, InheritedModel
 from .Requirement import Requirement, Requirements
+import traceback
 import requests
 import json
 
@@ -20,6 +21,7 @@ class RequiredAIClient:
 		"""
 		self.base_url = base_url.rstrip('/')
 		self.session = requests.Session()
+		self.model_cache:Dict[str, ModelConfig|FallbackModel] = {}
 		
 		for model_name, model_config in all_model_configs.items():
 			if isinstance(model_config, ModelConfig):
@@ -120,6 +122,7 @@ class RequiredAIClient:
 		Returns:
 			The API response as a dictionary
 		"""
+		self.model_cache[model.name] = model
 		model.client = self
 		endpoint = f"{self.base_url}/v1/models/add"
 		
@@ -138,6 +141,7 @@ class RequiredAIClient:
 		Returns:
 			The API response as a dictionary
 		"""
+		self.model_cache[fallback.name] = fallback
 		fallback.client = self
 		endpoint = f"{self.base_url}/v1/models/fallback/add"
 		
@@ -145,3 +149,56 @@ class RequiredAIClient:
 		response.raise_for_status()
 		
 		return response.json()
+	
+	def model(
+			self,
+			name: Optional[str] = None,
+			
+			provider: Optional[str] = None,
+			provider_model: Optional[str] = None,
+			api_key_env: Optional[str] = None,
+			
+			base_model: Optional['ModelConfig'] = None,
+			models: Optional[List[ModelRetryParameters]] = None,
+			
+			requirements: Optional[List[Requirement]] = None,
+			input_config: Union[None, InputConfig, List[InputConfig]] = None,
+			output_tags: List[str] = [],
+			default_params: Dict[str, Any] = {}
+			) -> ModelConfig | FallbackModel:
+		'''
+		Lazily create the appropriate model type,
+		add it to this client, and return it,
+		
+		or return the existing model.
+		'''
+		if name is None:
+			stack = traceback.extract_stack()
+			caller_method = 'unknown'
+			for frame in reversed(stack[:-1]):
+				if frame.name not in ['create_model', '<module>']:
+					caller_method = frame.name
+					break
+			count = self.model_cache.get(caller_method, 0) + 1
+			self.model_cache[caller_method] = count
+			name = f"{caller_method}.Model_{count}"
+
+		if name in self.model_cache:
+			return self.model_cache[name]
+
+		if base_model:
+			model = InheritedModel(name, base_model, requirements, input_config, output_tags)
+		elif models:
+			model = FallbackModel(name, models, requirements, input_config, output_tags, default_params)
+		elif provider and provider_model:
+			model = ModelConfig(name, provider, provider_model, api_key_env, requirements, input_config, output_tags, default_params)
+		else:
+			raise ValueError("Invalid parameters: must provide base_model for InheritedModel, models for FallbackModel, or provider/provider_model for ModelConfig")
+
+		all_model_configs[name] = model
+		if isinstance(model, ModelConfig):
+			self.add_model(model)
+		else:
+			self.add_fallback_model(model)
+		
+		return model
