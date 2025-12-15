@@ -228,7 +228,7 @@ class ModelConfig:
 		return None
 
 	def __call__(self,
-		messages: List[Dict[str, Any]],
+		messages: List[Dict[str, Any]] | str,
 		requirements: List[Requirement]=[],
 		key: Optional[str] = None,
 		initial_response: Optional[Dict[str, Any]] = None,
@@ -236,6 +236,8 @@ class ModelConfig:
 	) -> Dict[str, Any]:
 		'''Helper to call client.create_completion.'''
 		assert self.client, 'Must call this client side only and set self.client first by adding it to a client.'
+		if isinstance(messages, str):
+			messages = [{"role": "user", "content": messages}]
 		return self.client.create_completion(self.name, messages, requirements, key, initial_response, **kwargs)
 
 def InheritedModel(name:str, base_model:ModelConfig, requirements:List[Requirement]=None, input_config:None | InputConfig | List[InputConfig]=None, output_tags:List[str]=[]) -> ModelConfig:
@@ -319,7 +321,7 @@ class FallbackModel:
 		all_model_configs[self.name] = self
 		
 	def __call__(self,
-		messages: List[Dict[str, Any]],
+		messages: List[Dict[str, Any]] | str,
 		requirements: List[Requirement]=[],
 		key: Optional[str] = None,
 		initial_response: Optional[Dict[str, Any]] = None,
@@ -327,6 +329,8 @@ class FallbackModel:
 	) -> Dict[str, Any]:
 		'''Helper to call client.create_completion.'''
 		assert self.client, 'Must call this client side only and set self.client first by adding it to a client.'
+		if isinstance(messages, str):
+			messages = [{"role": "user", "content": messages}]
 		return self.client.create_completion(self.name, messages, requirements, key, initial_response, **kwargs)
 
 def SimpleFallbackModel(name:str, models:List[ModelConfig], max_retries:int=3, delay_between_retries:float=1) -> FallbackModel:
